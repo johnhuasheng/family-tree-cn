@@ -1,0 +1,1399 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="icon" href="tools/family.ico"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body><title>家族辈分谱</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@600;900&display=swap">
+<style id="page-style">
+/* 布局：抬头（印章 + 标题 + 视角）→ 视图切换 → 族谱面板（左侧辈分脊线 + 父系 / 本家 / 母系 / 姻亲四列，夫妻成对）→ 称呼计算器；手机上折成单列 */
+:root{
+  --paper:#E7ECE7; --paper-2:#DEE5E0; --card:#FCFDFB; --ink:#17201C; --muted:#5A6863; --faint:#88958F;
+  --line:#C9D2CD; --soft:#E0E6E2;
+  --seal:#B0302A; --seal-ink:#FFF7F2;
+  --pat:#2B4C7E; --core:#2A6852; --mat:#8C375A; --inlaw:#7A6019;
+  --row-hi:color-mix(in srgb,var(--seal) 5%,var(--card));
+  --shadow-sm:0 1px 0 rgba(20,32,28,.03),0 1px 3px rgba(20,32,28,.08);
+  --shadow-md:0 1px 2px rgba(20,32,28,.05),0 12px 28px -12px rgba(20,32,28,.22);
+  --shadow-lg:0 30px 70px -24px rgba(20,32,28,.35);
+  --f-display:"Noto Serif SC","Songti SC","STSong","SimSun",serif;
+  --f-body:"Noto Sans SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+  --r:10px; --r-lg:18px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#101614; --paper-2:#0B100E; --card:#19211F; --ink:#E5ECE8; --muted:#9BA9A3; --faint:#6E7C76;
+  --line:#313C38; --soft:#232D2A;
+  --seal:#DE5E55; --seal-ink:#1C0F0E;
+  --pat:#8FAEE0; --core:#7CC7A8; --mat:#DD93B3; --inlaw:#D2B56B;
+  --shadow-sm:0 1px 0 rgba(0,0,0,.25),0 1px 3px rgba(0,0,0,.35);
+  --shadow-md:0 1px 2px rgba(0,0,0,.3),0 14px 30px -12px rgba(0,0,0,.6);
+  --shadow-lg:0 30px 70px -20px rgba(0,0,0,.75); color-scheme:dark }}
+:root[data-theme="dark"]{
+  --paper:#101614; --paper-2:#0B100E; --card:#19211F; --ink:#E5ECE8; --muted:#9BA9A3; --faint:#6E7C76;
+  --line:#313C38; --soft:#232D2A;
+  --seal:#DE5E55; --seal-ink:#1C0F0E;
+  --pat:#8FAEE0; --core:#7CC7A8; --mat:#DD93B3; --inlaw:#D2B56B;
+  --shadow-sm:0 1px 0 rgba(0,0,0,.25),0 1px 3px rgba(0,0,0,.35);
+  --shadow-md:0 1px 2px rgba(0,0,0,.3),0 14px 30px -12px rgba(0,0,0,.6);
+  --shadow-lg:0 30px 70px -20px rgba(0,0,0,.75); color-scheme:dark }
+*{box-sizing:border-box}
+body{background-color:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.6;
+  background-image:radial-gradient(1100px 520px at 50% -160px,color-mix(in srgb,var(--card) 75%,transparent),transparent 72%),
+  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--seal);outline-offset:2px}
+.wrap{max-width:1240px;margin:0 auto;padding-inline:28px;padding-block:36px 120px}
+@media (max-width:520px){.wrap{padding-inline:16px;padding-block:22px 120px}}
+
+/* ---------- 抬头 ---------- */
+.masthead{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:22px 32px;padding-bottom:26px}
+.brand{display:flex;align-items:center;gap:20px;min-width:0}
+.seal{flex:none;width:66px;height:66px;display:grid;place-items:center;background:var(--seal);color:var(--seal-ink);font-family:var(--f-display);font-weight:900;font-size:38px;line-height:1;border-radius:7px;transform:rotate(-4deg);
+  box-shadow:inset 0 0 0 4px var(--seal),inset 0 0 0 5.5px color-mix(in srgb,var(--seal-ink) 85%,transparent),0 10px 22px -10px color-mix(in srgb,var(--seal) 80%,transparent)}
+.eyebrow{margin:0 0 6px;font-size:12px;letter-spacing:.34em;color:var(--seal);font-weight:500}
+h1{margin:0;font-family:var(--f-display);font-weight:900;font-size:clamp(30px,4.4vw,44px);line-height:1.1;letter-spacing:.06em;text-wrap:balance}
+.stats{display:flex;flex-wrap:wrap;align-items:center;gap:6px 0;margin:12px 0 0;color:var(--muted);font-size:13px}
+.stats span{display:inline-flex;align-items:baseline;gap:3px}
+.stats span + span::before{content:"";align-self:center;width:1px;height:12px;background:var(--line);margin:0 16px}
+.stats b{font-family:var(--f-display);font-weight:900;font-size:18px;color:var(--ink);font-variant-numeric:tabular-nums}
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.persp{position:relative;display:flex;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:3px 4px 3px 16px;box-shadow:var(--shadow-sm);min-width:0}
+.persp > span{font-size:12px;color:var(--muted);letter-spacing:.12em;white-space:nowrap;padding-right:10px;border-right:1px solid var(--soft)}
+.persp select{border:0;background:transparent;padding:7px 34px 7px 12px;appearance:none;-webkit-appearance:none;max-width:230px;min-width:0;font-weight:500;cursor:pointer}
+.persp select:focus-visible{outline:none}
+.persp:focus-within{border-color:var(--ink)}
+.persp::after{content:"";position:absolute;right:16px;top:50%;width:6px;height:6px;border-right:1.5px solid var(--muted);border-bottom:1.5px solid var(--muted);transform:translateY(-70%) rotate(45deg);pointer-events:none}
+select,input,textarea{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 11px;min-width:0}
+textarea{width:100%;resize:vertical;font-size:12.5px;font-family:ui-monospace,Menlo,Consolas,monospace}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:8px 18px;font-weight:500;white-space:nowrap;box-shadow:var(--shadow-sm);transition:border-color .15s,transform .15s,background .15s}
+.btn:hover{border-color:var(--ink)}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.btn.seal-btn{background:var(--seal);border-color:var(--seal);color:var(--seal-ink)}
+.btn.ghost{background:transparent;box-shadow:none}
+.btn.danger{color:var(--seal);border-color:color-mix(in srgb,var(--seal) 40%,var(--line));box-shadow:none;background:transparent}
+.btn[disabled]{opacity:.5;cursor:default}
+
+/* ---------- 视图切换与提示 ---------- */
+.viewbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 24px;margin:0 0 18px;padding-top:20px;border-top:1px solid var(--line)}
+.seg{display:inline-flex;padding:4px;background:var(--paper-2);border:1px solid var(--soft);border-radius:999px;gap:2px}
+.seg button{display:inline-flex;align-items:center;gap:8px;border:0;background:transparent;padding:7px 18px;border-radius:999px;font-weight:500;color:var(--muted);transition:background .2s,color .2s}
+.seg button svg{width:16px;height:16px;flex:none}
+.seg button:hover{color:var(--ink)}
+.seg button[aria-selected="true"]{background:var(--card);color:var(--ink);box-shadow:var(--shadow-sm)}
+.hint{display:flex;flex-wrap:wrap;gap:6px 22px;margin:0;color:var(--muted);font-size:12.5px}
+.hint span{display:inline-flex;align-items:center;gap:8px}
+.hint span::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--seal);opacity:.75}
+.notice{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin:0 0 18px;padding:12px 14px;border-radius:var(--r);background:var(--card);border:1px solid var(--soft);box-shadow:var(--shadow-sm);font-size:13.5px}
+.notice p{margin:0;flex:1 1 280px;color:var(--muted)}
+.notice p b{color:var(--ink);font-weight:500}
+.stamp{flex:none;font-family:var(--f-display);font-weight:900;font-size:13px;letter-spacing:.12em;color:var(--seal);border:1.5px solid var(--seal);border-radius:4px;padding:1px 6px 1px 8px;transform:rotate(-4deg)}
+.viewing{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin:0 0 18px;padding:10px 12px 10px 18px;border-radius:var(--r);background:var(--ink);color:var(--paper);font-size:14px;box-shadow:var(--shadow-md)}
+.viewing > span{flex:1 1 260px}
+.viewing b{font-family:var(--f-display);font-size:16px}
+.viewing .btn{background:transparent;color:var(--paper);border-color:color-mix(in srgb,var(--paper) 35%,transparent);box-shadow:none;padding:5px 14px}
+
+/* ---------- 族谱面板 ---------- */
+.panel{background:var(--card);border:1px solid var(--soft);border-radius:var(--r-lg);box-shadow:var(--shadow-md);overflow:hidden}
+.chart-scroll{overflow-x:auto}
+.chart{display:grid;grid-template-columns:92px repeat(4,minmax(0,1fr));min-width:860px}
+.corner{border-bottom:1px solid var(--soft);padding:18px 0 14px;text-align:center;font-size:11.5px;letter-spacing:.34em;color:var(--faint);align-self:stretch}
+.colhead{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;padding:18px 18px 14px;border-bottom:1px solid var(--soft);border-left:1px solid var(--soft)}
+.colhead strong{font-family:var(--f-display);font-weight:900;font-size:17px;letter-spacing:.16em}
+.colhead span{font-size:12px;color:var(--muted)}
+.colhead em{margin-left:auto;font-style:normal;font-size:12px;color:var(--faint);font-variant-numeric:tabular-nums}
+.colhead.pat{box-shadow:inset 0 -2px 0 var(--pat)} .colhead.pat strong{color:var(--pat)}
+.colhead.core{box-shadow:inset 0 -2px 0 var(--core)} .colhead.core strong{color:var(--core)}
+.colhead.mat{box-shadow:inset 0 -2px 0 var(--mat)} .colhead.mat strong{color:var(--mat)}
+.colhead.inlaw{box-shadow:inset 0 -2px 0 var(--inlaw)} .colhead.inlaw strong{color:var(--inlaw)}
+.band{display:contents}
+.gen{--bg:var(--card);position:relative;grid-column:1;background:var(--bg);border-bottom:1px dashed var(--soft);padding:20px 0;display:flex;flex-direction:column;align-items:center;gap:7px}
+.gen::before{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--line)}
+.band.first .gen::before{top:37px}
+.band.last .gen::before{bottom:auto;height:37px}
+.band.first.last .gen::before{display:none}
+.gen-num{position:relative;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--card);border:1px solid var(--line);font-size:12px;font-weight:500;color:var(--muted);font-variant-numeric:tabular-nums}
+.gen-name{position:relative;font-family:var(--f-display);font-weight:900;font-size:16px;letter-spacing:.2em;padding:2px 0 2px .2em;background:var(--bg)}
+.gen.is-zero{--bg:var(--row-hi)}
+.gen.is-zero .gen-num{background:var(--seal);border-color:var(--seal);color:var(--seal-ink)}
+.gen.is-zero .gen-name{color:var(--seal)}
+.zibei{position:relative;font-size:11.5px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:1px 9px;background:var(--card);letter-spacing:.08em;white-space:nowrap}
+button.zibei{cursor:pointer}
+button.zibei.empty{border-style:dashed;color:var(--faint)}
+.cell{border-bottom:1px dashed var(--soft);border-left:1px solid var(--soft);padding:18px;display:flex;flex-wrap:wrap;align-content:flex-start;gap:12px;min-width:0}
+.cell.row0{background:var(--row-hi)}
+.cell.pat{--side:var(--pat)} .cell.core{--side:var(--core)} .cell.mat{--side:var(--mat)} .cell.inlaw{--side:var(--inlaw)}
+.band.last .gen,.band.last .cell{border-bottom:0}
+.cell-tag{display:none}
+.pair{display:inline-flex;align-items:stretch;max-width:100%}
+.tie{flex:none;width:18px;position:relative}
+.tie::before{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:var(--side)}
+.tie::after{content:"";position:absolute;left:50%;top:50%;width:7px;height:7px;margin:-3.5px 0 0 -3.5px;border-radius:50%;background:var(--card);border:1.5px solid var(--side)}
+.pcard{position:relative;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;min-width:118px;max-width:100%;padding:11px 26px 12px 15px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);text-align:left;box-shadow:var(--shadow-sm);transition:transform .18s,box-shadow .18s,border-color .18s}
+.pcard::after{content:"";position:absolute;top:12px;right:11px;width:6px;height:6px;border-radius:50%;background:var(--side,var(--faint))}
+.pcard:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);border-color:var(--side,var(--ink))}
+.pcard .term{font-family:var(--f-display);font-weight:600;font-size:19px;line-height:1.25;letter-spacing:.04em}
+.pcard .via{font-size:11.5px;color:var(--muted);line-height:1.4}
+.pcard .amb{font-size:11px;color:var(--seal)}
+.pcard.ph{border-style:dashed;background:transparent;box-shadow:none}
+.pcard.ph .term{color:var(--muted)}
+.pcard.is-center{align-items:center;min-width:100px;padding:11px 18px 12px;background:var(--seal);border-color:var(--seal);color:var(--seal-ink);
+  box-shadow:inset 0 0 0 3px var(--seal),inset 0 0 0 4px color-mix(in srgb,var(--seal-ink) 70%,transparent),0 10px 22px -10px color-mix(in srgb,var(--seal) 85%,transparent)}
+.pcard.is-center::after{display:none}
+.pcard.is-center .term{font-weight:900;font-size:22px;letter-spacing:.2em;padding-left:.2em}
+.pcard.is-center .via{color:var(--seal-ink);opacity:.85}
+.pcard.on-path{border-color:var(--seal);box-shadow:0 0 0 3px color-mix(in srgb,var(--seal) 20%,transparent),var(--shadow-sm)}
+.pcard.is-sel{border-color:var(--ink);box-shadow:0 0 0 3px color-mix(in srgb,var(--ink) 20%,transparent),var(--shadow-md)}
+.pcard.is-center.is-sel,.pcard.is-center.on-path{border-color:var(--seal)}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.intro .pcard,.intro .tie{animation:rise .5s cubic-bezier(.2,.7,.2,1) both;animation-delay:calc(var(--i,0) * 22ms)}
+
+@media (max-width:760px){
+  .masthead{align-items:flex-start}
+  .controls{width:100%}
+  .persp{flex:1 1 100%}
+  .persp select{flex:1;max-width:none}
+  .chart{display:block;min-width:0}
+  .corner,.colhead{display:none}
+  .band{display:block;border-bottom:1px dashed var(--soft);padding-bottom:12px}
+  .band.last{border-bottom:0}
+  .gen{flex-direction:row;justify-content:flex-start;padding:16px 16px 4px;border:0;gap:10px;background:transparent}
+  .gen::before{display:none}
+  .gen-name{background:transparent}
+  .band.is-zero{background:var(--row-hi)}
+  .cell{border:0;padding:6px 16px 8px;gap:8px;background:transparent}
+  .cell.row0{background:transparent}
+  .cell.empty{display:none}
+  .cell-tag{display:flex;align-items:center;gap:7px;width:100%;font-size:12px;letter-spacing:.12em;font-weight:500;color:var(--side)}
+  .cell-tag::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--side)}
+  .pair{flex:1 1 100%}
+  .pair .pcard{flex:1}
+  .pcard{flex:1 1 128px}
+}
+
+/* ---------- 称呼计算器 ---------- */
+.calc{margin-top:28px;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr)}
+@media (max-width:760px){.calc{grid-template-columns:1fr}}
+.calc-in{padding:26px 28px}
+.calc h2{margin:0;font-family:var(--f-display);font-weight:900;font-size:22px;letter-spacing:.08em}
+.calc .lead{margin:6px 0 20px;color:var(--muted);font-size:13.5px;max-width:42ch}
+.kgroup{display:grid;grid-template-columns:40px minmax(0,1fr);align-items:center;gap:12px;margin-bottom:10px}
+.klabel{font-size:12px;color:var(--faint);letter-spacing:.2em}
+.krow{display:flex;flex-wrap:wrap;gap:6px}
+.key{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:7px 15px;font-size:14px;box-shadow:var(--shadow-sm);transition:border-color .15s,transform .1s}
+.key:hover{border-color:var(--ink)}
+.key:active{transform:translateY(1px)}
+.kact{display:flex;gap:8px;margin-top:16px;padding-left:52px}
+.gseg{justify-self:start;display:inline-flex;padding:3px;background:var(--paper-2);border:1px solid var(--soft);border-radius:999px;gap:2px}
+.gseg button{border:0;background:transparent;padding:4px 16px;border-radius:999px;font-size:13.5px;color:var(--muted)}
+.gseg button[aria-pressed="true"]{background:var(--card);color:var(--ink);box-shadow:var(--shadow-sm);font-weight:500}
+.kgroup .gnote{grid-column:2;margin-top:-4px;font-size:11.5px;color:var(--faint)}
+.calc-res{position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:14px 22px;align-items:end}
+@media (max-width:520px){.calc-res{grid-template-columns:1fr}}
+.res-main{display:flex;flex-direction:column;gap:2px;min-width:0}
+.res-lbl{display:block;font-size:11.5px;letter-spacing:.16em;color:var(--faint);margin-bottom:2px}
+.res-alt{font-size:13px;color:var(--muted)}
+.res-side{display:flex;flex-direction:column;gap:12px;padding-left:18px;border-left:1px solid var(--line);min-width:0}
+@media (max-width:520px){.res-side{padding-left:0;border-left:0;border-top:1px solid var(--line);padding-top:12px}}
+.res-side b{font-family:var(--f-display);font-weight:900;font-size:22px;letter-spacing:.04em;overflow-wrap:anywhere}
+.res-side span:not(.res-lbl){font-size:14px}
+@media (max-width:520px){.kact{padding-left:0}.calc-in{padding:22px 18px}}
+.calc-out{position:relative;overflow:hidden;background:var(--paper-2);border-left:1px solid var(--soft);padding:26px 28px;min-height:250px;display:flex;flex-direction:column;justify-content:center;gap:12px}
+@media (max-width:760px){.calc-out{border-left:0;border-top:1px solid var(--soft);padding:22px 18px}}
+.calc-out::after{content:"称";position:absolute;right:-10px;bottom:-46px;font-family:var(--f-display);font-weight:900;font-size:200px;line-height:1;color:var(--ink);opacity:.04;pointer-events:none}
+.chainline{position:relative;z-index:1;display:flex;flex-wrap:wrap;align-items:center;gap:5px;font-size:14px}
+.chip{display:inline-flex;align-items:center;padding:3px 11px;border-radius:999px;border:1px solid var(--line);background:var(--card);font-size:13px}
+.chip.me{background:var(--seal);border-color:var(--seal);color:var(--seal-ink)}
+.arrow{color:var(--faint);font-size:12px}
+.calc-term{position:relative;z-index:1;font-family:var(--f-display);font-weight:900;font-size:clamp(30px,4vw,46px);line-height:1.15;letter-spacing:.04em;overflow-wrap:anywhere}
+.calc-meta{position:relative;z-index:1;color:var(--muted);font-size:13px}
+
+/* ---------- 详情抽屉 ---------- */
+.side-pat{--side:var(--pat)} .side-core{--side:var(--core)} .side-mat{--side:var(--mat)} .side-inlaw{--side:var(--inlaw)}
+.drawer{position:fixed;z-index:20;top:0;right:0;bottom:0;width:min(400px,100%);background:var(--card);border-left:1px solid var(--soft);box-shadow:var(--shadow-lg);padding:calc(22px + env(safe-area-inset-top,0px)) 24px calc(24px + env(safe-area-inset-bottom,0px));overflow-y:auto;display:flex;flex-direction:column;gap:16px}
+@media (max-width:760px){.drawer{top:auto;width:100%;max-height:80%;border-left:0;border-top:1px solid var(--soft);border-radius:18px 18px 0 0}}
+.d-head{margin:calc(-22px - env(safe-area-inset-top,0px)) -24px 0;padding:calc(26px + env(safe-area-inset-top,0px)) 24px 20px;background:linear-gradient(180deg,color-mix(in srgb,var(--side) 13%,var(--card)),var(--card));border-bottom:1px solid var(--soft);display:flex;flex-direction:column;gap:6px}
+@media (max-width:760px){.d-head{margin-top:-22px;padding-top:26px;border-radius:18px 18px 0 0}}
+.d-close{position:absolute;z-index:2;top:calc(14px + env(safe-area-inset-top,0px));right:14px;width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--card);font-size:18px;line-height:1;box-shadow:var(--shadow-sm)}
+.d-eyebrow{font-size:12px;letter-spacing:.14em;color:var(--muted);display:flex;align-items:center;gap:8px}
+.d-eyebrow::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--side)}
+.d-term{margin:0;font-family:var(--f-display);font-weight:900;font-size:44px;line-height:1.12;letter-spacing:.04em;padding-right:40px}
+.d-alt{color:var(--muted);font-size:13px}
+.d-name{font-size:16px;font-weight:500}
+.d-name small{color:var(--muted);font-weight:400;font-size:13px}
+.facts{display:grid;grid-template-columns:auto 1fr;gap:9px 16px;margin:0;font-size:14px;padding:14px 16px;border:1px solid var(--soft);border-radius:var(--r)}
+.facts dt{color:var(--muted)}
+.facts dd{margin:0}
+.facts dd b{font-family:var(--f-display);font-size:17px}
+.side-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;vertical-align:1px}
+.d-note{margin:0;padding:12px 14px;background:var(--paper-2);border-radius:var(--r);font-size:13.5px}
+.d-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:auto;padding-top:8px}
+
+/* ---------- 弹窗 ---------- */
+.overlay{position:fixed;inset:0;z-index:30;background:rgba(10,14,12,.45);display:grid;place-items:center;padding:16px;backdrop-filter:blur(2px)}
+.modal{width:min(480px,100%);max-height:calc(100% - 20px);overflow-y:auto;background:var(--card);border:1px solid var(--soft);border-radius:16px;padding:24px;display:flex;flex-direction:column;gap:14px;box-shadow:var(--shadow-lg)}
+.modal h2{margin:0;font-family:var(--f-display);font-weight:900;font-size:22px;letter-spacing:.04em}
+.field{display:flex;flex-direction:column;gap:6px}
+.field > span{font-size:12.5px;color:var(--muted)}
+.field input,.field select{width:100%}
+.rel-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.rel-row select{flex:1 1 140px}
+.preview{margin:0;padding:12px 14px;border-radius:var(--r);background:var(--paper-2);font-size:14px}
+.preview b{font-family:var(--f-display);font-size:19px}
+.err{margin:0;color:var(--seal);font-size:13.5px}
+.small{font-size:12.5px;color:var(--muted);margin:0}
+.m-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px}
+.sep{border:0;border-top:1px solid var(--soft);margin:4px 0}
+
+/* ---------- 保存条 / 提示 / 页脚 ---------- */
+.savebar{position:fixed;z-index:15;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));width:min(640px,calc(100% - 32px));display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 12px 10px 18px;background:var(--ink);color:var(--paper);border-radius:999px;box-shadow:var(--shadow-lg)}
+@media (max-width:520px){.savebar{border-radius:14px}}
+.savebar p{margin:0;flex:1 1 200px;font-size:13.5px}
+.savebar .btn{border-color:color-mix(in srgb,var(--paper) 35%,transparent);background:transparent;color:var(--paper);box-shadow:none}
+.savebar .btn.seal-btn{background:var(--seal);border-color:var(--seal);color:var(--seal-ink)}
+#toast{position:fixed;z-index:40;left:50%;top:calc(18px + env(safe-area-inset-top,0px));transform:translate(-50%,-8px);background:var(--ink);color:var(--paper);padding:9px 18px;border-radius:999px;font-size:13.5px;max-width:calc(100% - 32px);pointer-events:none;opacity:0;transition:opacity .2s,transform .2s;box-shadow:var(--shadow-md)}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+footer.foot{display:flex;align-items:flex-start;gap:12px;margin-top:40px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px}
+footer.foot::before{content:"谱";flex:none;width:22px;height:22px;display:grid;place-items:center;border-radius:4px;background:var(--seal);color:var(--seal-ink);font-family:var(--f-display);font-weight:900;font-size:13px;transform:rotate(-4deg);margin-top:1px}
+
+/* ---------- 查看方式：3D 关系图 ---------- */
+.stage{position:relative;height:min(76vh,720px);min-height:460px;border:1px solid var(--soft);border-radius:var(--r-lg);box-shadow:var(--shadow-md);overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab;
+  background:radial-gradient(ellipse at 50% 45%,color-mix(in srgb,var(--card) 88%,var(--seal)) 0%,var(--card) 50%,var(--paper-2) 100%)}
+.stage:active{cursor:grabbing}
+@media (max-width:760px){.stage{height:68vh;min-height:400px}.stage-hint{display:none}}
+.stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.labels3d{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.n3{position:absolute;left:0;top:0;pointer-events:auto;transform-origin:50% 0;padding:1px 9px 2px;border:1px solid transparent;border-radius:6px;background:color-mix(in srgb,var(--card) 82%,transparent);white-space:nowrap;line-height:1.35;cursor:pointer;font-family:var(--f-display);font-weight:600;font-size:14px;color:var(--ink);box-shadow:var(--shadow-sm)}
+.n3:hover{border-color:var(--ink)}
+.n3.c{background:var(--seal);color:var(--seal-ink);font-size:17px;font-weight:900;padding:1px 11px 2px}
+.n3.ph{color:var(--muted);border-style:dashed;border-color:var(--line);box-shadow:none}
+.n3.sel{border-color:var(--ink);background:var(--card);box-shadow:0 0 0 2px var(--ink)}
+.n3.path{border-color:var(--seal);background:var(--card)}
+.n3.c.path,.n3.c.sel{background:var(--seal);color:var(--seal-ink)}
+.g3{position:absolute;left:0;top:0;font-size:12px;letter-spacing:.14em;color:var(--muted);white-space:nowrap;padding:1px 8px;border-radius:999px;background:color-mix(in srgb,var(--paper) 80%,transparent);border:1px solid var(--soft)}
+.stage-ui{position:absolute;left:14px;right:14px;top:14px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:8px;pointer-events:none}
+.stage-ui > *{pointer-events:auto}
+.legend3d{display:flex;flex-wrap:wrap;gap:4px 14px;padding:7px 12px;border-radius:999px;background:color-mix(in srgb,var(--card) 88%,transparent);border:1px solid var(--soft);font-size:12px;box-shadow:var(--shadow-sm)}
+.legend3d i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:0}
+.stage-btns{display:flex;gap:6px}
+.stage-btns .btn{padding:6px 14px;font-size:12.5px;background:color-mix(in srgb,var(--card) 92%,transparent)}
+.stage-hint{position:absolute;left:16px;bottom:12px;margin:0;font-size:12px;color:var(--muted);pointer-events:none;line-height:1.5}
+.stage-msg{position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center;color:var(--muted);background:var(--card)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+<div id="app"></div><div id="drawer-host"></div><div id="modal-host"></div><div id="toast" role="status" aria-live="polite"></div>
+<script type="application/json" id="family-data">{"v":1,"sample":true,"title":"张家辈分谱","root":"me","zibei":{"1":"建"},"people":[{"id":"me","name":"张明","g":"M","yr":1998,"note":"这份家谱的主人","fa":"f1","mo":"m1","sp":"w1"},{"id":"f1","name":"张建国","g":"M","yr":1968,"note":"在老家县城中学教书","fa":"gf","mo":"gm","sp":"m1"},{"id":"m1","name":"李秀英","g":"F","yr":1970,"note":"","fa":"mgf","mo":"mgm","sp":"f1"},{"id":"gf","name":"张德山","g":"M","yr":1940,"note":"住在老家，过年全家回去","fa":null,"mo":null,"sp":"gm"},{"id":"gm","name":"王桂兰","g":"F","yr":1942,"note":"","fa":null,"mo":null,"sp":"gf"},{"id":"u1","name":"张建华","g":"M","yr":1965,"note":"大伯，逢年过节主要在他家聚","fa":"gf","mo":"gm","sp":"a1"},{"id":"a1","name":"陈丽","g":"F","yr":1966,"note":"","fa":null,"mo":null,"sp":"u1"},{"id":"c1","name":"张磊","g":"M","yr":1992,"note":"在杭州做工程师","fa":"u1","mo":"a1","sp":null},{"id":"u2","name":"张建军","g":"M","yr":1972,"note":"","fa":"gf","mo":"gm","sp":"a2"},{"id":"a2","name":"刘芳","g":"F","yr":1974,"note":"","fa":null,"mo":null,"sp":"u2"},{"id":"c2","name":"张琪","g":"F","yr":2003,"note":"大学在读","fa":"u2","mo":"a2","sp":null},{"id":"t1","name":"张建梅","g":"F","yr":1975,"note":"爸爸最小的妹妹","fa":"gf","mo":"gm","sp":"t1h"},{"id":"t1h","name":"赵强","g":"M","yr":1973,"note":"","fa":null,"mo":null,"sp":"t1"},{"id":"c3","name":"赵宇","g":"M","yr":2001,"note":"","fa":"t1h","mo":"t1","sp":null},{"id":"mgf","name":"李志远","g":"M","yr":1943,"note":"","fa":null,"mo":null,"sp":"mgm"},{"id":"mgm","name":"孙玉珍","g":"F","yr":1945,"note":"","fa":null,"mo":null,"sp":"mgf"},{"id":"mu","name":"李文","g":"M","yr":1967,"note":"妈妈的哥哥","fa":"mgf","mo":"mgm","sp":"mua"},{"id":"mua","name":"周静","g":"F","yr":1968,"note":"","fa":null,"mo":null,"sp":"mu"},{"id":"c4","name":"李婷","g":"F","yr":1995,"note":"","fa":"mu","mo":"mua","sp":null},{"id":"ma","name":"李秀芳","g":"F","yr":1974,"note":"","fa":"mgf","mo":"mgm","sp":"mah"},{"id":"mah","name":"吴刚","g":"M","yr":1972,"note":"","fa":null,"mo":null,"sp":"ma"},{"id":"c5","name":"吴悦","g":"F","yr":2005,"note":"","fa":"mah","mo":"ma","sp":null},{"id":"sis","name":"张晓","g":"F","yr":1995,"note":"","fa":"f1","mo":"m1","sp":"sish"},{"id":"sish","name":"黄涛","g":"M","yr":1993,"note":"","fa":null,"mo":null,"sp":"sis"},{"id":"nep","name":"黄子轩","g":"M","yr":2022,"note":"","fa":"sish","mo":"sis","sp":null},{"id":"w1","name":"林悦","g":"F","yr":1999,"note":"","fa":"wf","mo":"wm","sp":"me"},{"id":"wf","name":"林国平","g":"M","yr":1970,"note":"","fa":null,"mo":null,"sp":"wm"},{"id":"wm","name":"郑敏","g":"F","yr":1972,"note":"","fa":null,"mo":null,"sp":"wf"},{"id":"wb","name":"林浩","g":"M","yr":2002,"note":"","fa":"wf","mo":"wm","sp":null},{"id":"dau","name":"张念","g":"F","yr":2025,"note":"","fa":"me","mo":"w1","sp":null}]}</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>window.THREE||document.write('<script src="three.min.js"><\/script>')</script>
+<script id="app-code">(function(){'use strict';
+/* ===== 称呼推算引擎 ===== */
+var WORD = {f:'爸爸',m:'妈妈',h:'丈夫',w:'妻子',s:'儿子',d:'女儿',ob:'哥哥',lb:'弟弟',os:'姐姐',ls:'妹妹',xb:'兄弟',xs:'姐妹'};
+var DICT_SRC = [
+'f|爸爸|父亲','m|妈妈|母亲','h|老公|丈夫','w|老婆|妻子','s|儿子|','d|女儿|',
+'ob|哥哥|','lb|弟弟|','os|姐姐|','ls|妹妹|',
+'ob,w|嫂子|嫂嫂','lb,w|弟媳|弟妹','os,h|姐夫|','ls,h|妹夫|',
+'ob,s|侄子|','ob,d|侄女|','lb,s|侄子|','lb,d|侄女|','os,s|外甥|','os,d|外甥女|','ls,s|外甥|','ls,d|外甥女|',
+'ob,s,w|侄媳|侄媳妇','lb,s,w|侄媳|侄媳妇','ob,d,h|侄女婿|','lb,d,h|侄女婿|',
+'os,s,w|外甥媳妇|','ls,s,w|外甥媳妇|','os,d,h|外甥女婿|','ls,d,h|外甥女婿|',
+'ob,s,s|侄孙|','lb,s,s|侄孙|','ob,s,d|侄孙女|','lb,s,d|侄孙女|',
+'ob,d,s|侄外孙|','lb,d,s|侄外孙|','ob,d,d|侄外孙女|','lb,d,d|侄外孙女|',
+'os,s,s|外甥孙|','ls,s,s|外甥孙|','os,s,d|外甥孙女|','ls,s,d|外甥孙女|',
+'os,d,s|外甥孙|','ls,d,s|外甥孙|','os,d,d|外甥孙女|','ls,d,d|外甥孙女|',
+'s,w|儿媳|儿媳妇','d,h|女婿|','s,s|孙子|','s,d|孙女|','d,s|外孙|','d,d|外孙女|',
+'s,s,w|孙媳妇|','s,d,h|孙女婿|','s,s,s|曾孙|','s,s,d|曾孙女|',
+'s,w,f|亲家公|','s,w,m|亲家母|','d,h,f|亲家公|','d,h,m|亲家母|',
+'f,f|爷爷|祖父','f,m|奶奶|祖母','m,f|外公|姥爷','m,m|外婆|姥姥',
+'f,f,f|太爷爷|曾祖父','f,f,m|太奶奶|曾祖母','f,m,f|曾外祖父|太姥爷','f,m,m|曾外祖母|太姥姥',
+'m,f,f|太外公|外曾祖父','m,f,m|太外婆|外曾祖母','m,m,f|外曾外祖父|','m,m,m|外曾外祖母|',
+'f,ob|伯父|大伯','f,ob,w|伯母|大妈','f,lb|叔叔|叔父','f,lb,w|婶婶|婶子',
+'f,os|姑妈|姑姑','f,ls|姑姑|小姑','f,os,h|姑父|姑丈','f,ls,h|姑父|姑丈',
+'m,ob|舅舅|大舅','m,lb|舅舅|小舅','m,ob,w|舅妈|舅母','m,lb,w|舅妈|舅母',
+'m,os|姨妈|大姨','m,ls|小姨|阿姨','m,os,h|姨父|姨丈','m,ls,h|姨父|姨丈',
+'f,f,ob|大爷爷|伯祖父','f,f,ob,w|大奶奶|伯祖母','f,f,lb|小爷爷|叔祖父','f,f,lb,w|小奶奶|叔祖母',
+'f,f,os|姑奶奶|姑祖母','f,f,ls|姑奶奶|姑祖母','f,f,os,h|姑爷爷|姑祖父','f,f,ls,h|姑爷爷|姑祖父',
+'f,m,ob|舅爷爷|舅公','f,m,lb|舅爷爷|舅公','f,m,ob,w|舅奶奶|舅婆','f,m,lb,w|舅奶奶|舅婆',
+'f,m,os|姨奶奶|姨婆','f,m,ls|姨奶奶|姨婆','f,m,os,h|姨爷爷|姨公','f,m,ls,h|姨爷爷|姨公',
+'m,f,ob|伯姥爷|伯外祖父','m,f,lb|叔姥爷|叔外祖父','m,f,ob,w|伯姥姥|伯外祖母','m,f,lb,w|叔姥姥|叔外祖母',
+'m,f,os|姑姥姥|姑外祖母','m,f,ls|姑姥姥|姑外祖母','m,m,ob|舅姥爷|舅外祖父','m,m,lb|舅姥爷|舅外祖父',
+'m,m,os|姨姥姥|姨外祖母','m,m,ls|姨姥姥|姨外祖母',
+'w,f|岳父|老丈人','w,m|岳母|丈母娘','h,f|公公|','h,m|婆婆|',
+'w,ob|大舅子|内兄','w,lb|小舅子|内弟','w,os|大姨子|内姐','w,ls|小姨子|内妹',
+'h,ob|大伯子|大伯哥','h,lb|小叔子|','h,os|大姑子|','h,ls|小姑子|',
+'h,ob,w|妯娌|大嫂','h,lb,w|妯娌|弟妹','w,os,h|连襟|姐夫','w,ls,h|连襟|妹夫',
+'w,ob,w|舅嫂|内嫂','w,lb,w|舅弟媳|',
+'w,ob,s|内侄|','w,lb,s|内侄|','w,ob,d|内侄女|','w,lb,d|内侄女|',
+'w,os,s|内甥|','w,ls,s|内甥|','w,os,d|内甥女|','w,ls,d|内甥女|',
+'h,ob,s|侄子|','h,lb,s|侄子|','h,ob,d|侄女|','h,lb,d|侄女|',
+'h,os,s|外甥|','h,ls,s|外甥|','h,os,d|外甥女|','h,ls,d|外甥女|'
+];
+var DICT = {};
+DICT_SRC.forEach(function(l){ var a = l.split('|'); DICT[a[0]] = [a[1], a[2] || '']; });
+(function genCousins(){
+  ['f','m'].forEach(function(p){ ['ob','lb','os','ls'].forEach(function(sb){
+    var pre = (p === 'f' && (sb === 'ob' || sb === 'lb')) ? '堂' : '表';
+    [['s','哥','弟'],['d','姐','妹']].forEach(function(cx){
+      var c = cx[0];
+      [['o',cx[1]],['l',cx[2]]].forEach(function(ax){
+        var k = p + ',' + sb + ',' + c + '&' + ax[0], t = pre + ax[1];
+        var alt = pre === '堂' ? (c === 's' ? '堂兄弟' : '堂姐妹') : (c === 's' ? '表兄弟' : '表姐妹');
+        DICT[k] = [t, alt];
+        if (c === 's') DICT[k + ',w'] = [ax[0] === 'o' ? pre + '嫂' : pre + '弟媳', ''];
+        else DICT[k + ',h'] = [t + '夫', ''];
+        if (c === 's') { DICT[k + ',s'] = [pre + '侄', '']; DICT[k + ',d'] = [pre + '侄女', '']; }
+        else { DICT[k + ',s'] = [pre + '外甥', '']; DICT[k + ',d'] = [pre + '外甥女', '']; }
+      });
+    });
+  }); });
+})();
+
+function baseCode(c){ return c.split('&')[0]; }
+function expandKey(codes){
+  var outs = [''];
+  codes.forEach(function(tok){
+    var parts = tok.split('&'), c = parts[0], a = parts[1];
+    var cs = c === 'xb' ? ['ob','lb'] : c === 'xs' ? ['os','ls'] : [c];
+    var as = a === undefined ? [null] : a === 'x' ? ['o','l'] : [a];
+    var opts = [];
+    cs.forEach(function(cc){ as.forEach(function(aa){ opts.push(aa ? cc + '&' + aa : cc); }); });
+    var next = [];
+    outs.forEach(function(o){ opts.forEach(function(t){ next.push(o ? o + ',' + t : t); }); });
+    outs = next;
+  });
+  return outs;
+}
+function uniq(a){ var s = []; a.forEach(function(x){ if (x && s.indexOf(x) < 0) s.push(x); }); return s; }
+function exactTerm(codes){
+  var keys = expandKey(codes), found = [];
+  for (var i = 0; i < keys.length; i++){ if (!DICT[keys[i]]) return null; found.push(DICT[keys[i]]); }
+  var t = uniq(found.map(function(f){ return f[0]; }));
+  var alt = uniq(found.map(function(f){ return f[1]; })).filter(function(x){ return t.indexOf(x) < 0; });
+  return { t: t.join(' / '), alt: alt.join('、'), exact: true, amb: t.length > 1 };
+}
+function termOf(codes){
+  if (!codes.length) return { t: '我', alt: '', exact: true };
+  var e = exactTerm(codes); if (e) return e;
+  for (var n = codes.length - 1; n >= 1; n--){
+    var pre = exactTerm(codes.slice(0, n));
+    if (pre){
+      var rest = codes.slice(n).map(function(c){ return WORD[baseCode(c)]; }).join('的');
+      return { t: pre.t.split(' / ')[0] + '的' + rest, alt: '', exact: false };
+    }
+  }
+  return { t: codes.map(function(c){ return WORD[baseCode(c)]; }).join('的'), alt: '', exact: false };
+}
+function describe(codes){
+  return codes.map(function(c){ return WORD[baseCode(c)]; }).join('的');
+}
+
+/* ===== 图谱 ===== */
+function kidsOf(M, id){
+  var out = [];
+  for (var k in M){ var q = M[k]; if (q.fa === id || q.mo === id) out.push(q); }
+  return out.sort(function(a, b){ return ageKey(a) - ageKey(b); });
+}
+function ageKey(p){ return p.yr != null ? p.yr : (p.ord != null ? p.ord : 99999); }
+function ageCmp(a, b, sib){
+  if (a.yr && b.yr && a.yr !== b.yr) return a.yr < b.yr ? -1 : 1;
+  if (!sib){
+    var ya = a.yr || (a.ordY ? a.ord : null), yb = b.yr || (b.ordY ? b.ord : null);
+    if (ya && yb && ya !== yb) return ya < yb ? -1 : 1;
+  }
+  if (sib){
+    var ka = a.ord != null ? a.ord : a.yr, kb = b.ord != null ? b.ord : b.yr;
+    if (a.yr && b.yr) { ka = a.yr; kb = b.yr; }
+    if (ka != null && kb != null && ka !== kb) return ka < kb ? -1 : 1;
+  }
+  return 0;
+}
+function nbrs(M, id){
+  var p = M[id], o = [];
+  if (p.fa && M[p.fa]) o.push([p.fa, 'f']);
+  if (p.mo && M[p.mo]) o.push([p.mo, 'm']);
+  kidsOf(M, id).forEach(function(q){ o.push([q.id, q.g === 'M' ? 's' : 'd']); });
+  if (p.sp && M[p.sp]) o.push([p.sp, M[p.sp].g === 'M' ? 'h' : 'w']);
+  return o;
+}
+function bfs(M, from){
+  var prev = {}; prev[from] = null; var q = [from];
+  while (q.length){
+    var id = q.shift();
+    nbrs(M, id).forEach(function(e){ if (!(e[0] in prev)){ prev[e[0]] = { id: id, c: e[1] }; q.push(e[0]); } });
+  }
+  return prev;
+}
+function rawPath(prev, to){
+  if (!(to in prev)) return null;
+  var out = [], cur = to;
+  while (prev[cur]){ out.unshift({ c: prev[cur].c, node: cur }); cur = prev[cur].id; }
+  return out;
+}
+function normalize(M, from, raw){
+  var out = [], prevNode = from;
+  for (var i = 0; i < raw.length; i++){
+    var r = raw[i], nx = raw[i + 1];
+    if ((r.c === 'f' || r.c === 'm') && nx && (nx.c === 's' || nx.c === 'd') && nx.node !== prevNode){
+      var q = M[nx.node], b = M[prevNode], k = ageCmp(q, b, true);
+      var c = q.g === 'M' ? (k < 0 ? 'ob' : k > 0 ? 'lb' : 'xb') : (k < 0 ? 'os' : k > 0 ? 'ls' : 'xs');
+      out.push({ c: c, node: nx.node }); prevNode = nx.node; i++; continue;
+    }
+    out.push({ c: r.c, node: r.node }); prevNode = r.node;
+  }
+  var g = 0, up = false, C = M[from];
+  out.forEach(function(t){
+    if (t.c === 'f' || t.c === 'm'){ g++; up = true; }
+    else if (t.c === 's' || t.c === 'd'){
+      g--;
+      if (g === 0 && up){ var k = ageCmp(M[t.node], C, false); t.c += '&' + (k < 0 ? 'o' : k > 0 ? 'l' : 'x'); }
+    }
+  });
+  return { toks: out, gen: g };
+}
+function sideOf(codes){
+  if (codes.length <= 1) return 'core';
+  for (var i = 0; i < codes.length - 1; i++){
+    var a = baseCode(codes[i]), b = baseCode(codes[i + 1]);
+    if ((a === 'h' || a === 'w') && /^(f|m|ob|lb|os|ls|xb|xs)$/.test(b)) return 'inlaw';
+  }
+  var c0 = baseCode(codes[0]);
+  if (c0 === 'f') return 'pat';
+  if (c0 === 'm') return 'mat';
+  return 'core';
+}
+/* 从 from 看 to：称呼、关系链、辈分差、哪一边 */
+function relation(M, from, to, prevCache){
+  var prev = prevCache || bfs(M, from);
+  var raw = rawPath(prev, to);
+  if (!raw) return null;
+  var n = normalize(M, from, raw);
+  var codes = n.toks.map(function(t){ return t.c; });
+  return { toks: n.toks, codes: codes, gen: n.gen, side: sideOf(codes), term: termOf(codes) };
+}
+
+/* ===== 称呼计算器（不依赖具体的人） ===== */
+var SIB_RE = /^(ob|lb|os|ls|xb|xs)$/;
+function genderOf(code, meG){
+  var b = baseCode(code);
+  if (/^(f|h|s|ob|lb|xb)$/.test(b)) return 'M';
+  if (/^(m|w|d|os|ls|xs)$/.test(b)) return 'F';
+  return meG;
+}
+function sibCode(g, age){ return g === 'M' ? (age === 'o' ? 'ob' : age === 'l' ? 'lb' : 'xb') : (age === 'o' ? 'os' : age === 'l' ? 'ls' : 'xs'); }
+function sibAge(c){ return c.charAt(0) === 'o' ? 'o' : c.charAt(0) === 'l' ? 'l' : 'x'; }
+function addMarkers(a){
+  var g = 0, up = false;
+  return a.map(function(c){
+    if (c === 'f' || c === 'm'){ g++; up = true; return c; }
+    if (c === 's' || c === 'd'){ g--; if (g === 0 && up) return c + '&x'; }
+    return c;
+  });
+}
+/* 把「我的 爸爸的 哥哥的 儿子…」这样一步步点出来的链化简：
+   meG 是「我」的性别，用来判断「儿子的爸爸」是不是我自己之类的情况 */
+function calcChain(input, meG){
+  meG = meG || 'M';
+  var a = input.slice(), selfHint = false, changed = true;
+  while (changed){
+    changed = false;
+    for (var i = 0; i < a.length - 1; i++){
+      var x = a[i], y = a[i + 1], rep = null;
+      var prevG = i === 0 ? meG : genderOf(a[i - 1], meG);   // x 是「谁」的亲人：那个人的性别
+      if (x === 'f' && y === 'w') rep = ['m'];
+      else if (x === 'm' && y === 'h') rep = ['f'];
+      else if ((x === 'h' && y === 'w') || (x === 'w' && y === 'h')) rep = [];
+      else if (SIB_RE.test(x) && (y === 'f' || y === 'm')) rep = [y];
+      else if ((x === 'f' || x === 'm') && (y === 's' || y === 'd')){
+        var gy = y === 's' ? 'M' : 'F';
+        rep = [sibCode(gy, 'x')]; if (gy === prevG) selfHint = true;
+      }
+      else if (SIB_RE.test(x) && SIB_RE.test(y)){
+        // 哥哥的姐姐 = 姐姐；弟弟的妹妹 = 妹妹；年纪一大一小时说不准
+        var ax = sibAge(x), ay = sibAge(y), g2 = genderOf(y, meG);
+        if (ax === 'o' && ay === 'o') rep = [sibCode(g2, 'o')];
+        else if (ax === 'l' && ay === 'l') rep = [sibCode(g2, 'l')];
+        else { rep = [sibCode(g2, 'x')]; if (g2 === prevG) selfHint = true; }
+      }
+      else if ((x === 's' || x === 'd') && SIB_RE.test(y)) rep = [genderOf(y, meG) === 'M' ? 's' : 'd'];
+      else if ((x === 's' || x === 'd') && (y === 'f' || y === 'm')){
+        var pg = y === 'f' ? 'M' : 'F';
+        rep = pg === prevG ? [] : [pg === 'M' ? 'h' : 'w'];
+      }
+      else if ((x === 'h' || x === 'w') && (y === 's' || y === 'd')) rep = [y];
+      if (rep){ a.splice.apply(a, [i, 2].concat(rep)); changed = true; break; }
+    }
+  }
+  a = addMarkers(a);
+  var gen = 0; a.forEach(function(c){ var b = baseCode(c); if (b === 'f' || b === 'm') gen++; else if (b === 's' || b === 'd') gen--; });
+  return { codes: a, gen: gen, selfHint: selfHint };
+}
+/* 反过来：已知「我 → TA」的关系链，求「TA → 我」的关系链 */
+function invertChain(codes, meG){
+  meG = meG || 'M';
+  var base = codes.map(baseCode), out = [];
+  var last = codes[codes.length - 1] || '', lastMark = last.indexOf('&') >= 0 ? last.split('&')[1] : null;
+  for (var i = 0; i < base.length; i++){
+    var c = base[i], g = i === 0 ? meG : genderOf(base[i - 1], meG), r;
+    if (c === 'f' || c === 'm') r = g === 'M' ? 's' : 'd';
+    else if (c === 's' || c === 'd') r = g === 'M' ? 'f' : 'm';
+    else if (c === 'h' || c === 'w') r = g === 'M' ? 'h' : 'w';
+    else if (c === 'ob' || c === 'os') r = sibCode(g, 'l');
+    else if (c === 'lb' || c === 'ls') r = sibCode(g, 'o');
+    else r = sibCode(g, 'x');
+    out.unshift(r);
+  }
+  var gen = 0, up = false, n = out.length;
+  return out.map(function(c, i){
+    if (c === 'f' || c === 'm'){ gen++; up = true; return c; }
+    if (c === 's' || c === 'd'){
+      gen--;
+      if (gen === 0 && up){
+        var m = 'x';
+        if (i === n - 1 && lastMark) m = lastMark === 'o' ? 'l' : lastMark === 'l' ? 'o' : 'x';
+        return c + '&' + m;
+      }
+    }
+    return c;
+  });
+}
+
+/* ===== 修改 ===== */
+function newId(){ return 'p' + Math.random().toString(36).slice(2, 8); }
+function blank(){ return { id: newId(), name: '', g: 'M', yr: null, note: '', fa: null, mo: null, sp: null }; }
+function siblingsIncl(M, X){
+  var out = [X];
+  for (var k in M){ var q = M[k]; if (q !== X && ((X.fa && q.fa === X.fa) || (X.mo && q.mo === X.mo))) out.push(q); }
+  return out;
+}
+var REL_LABEL = { fa: '父亲', mo: '母亲', h: '丈夫', w: '妻子', s: '儿子', d: '女儿', ob: '哥哥', lb: '弟弟', os: '姐姐', ls: '妹妹' };
+function addRel(M, anchorId, rel, info){
+  var X = M[anchorId]; if (!X) return { err: '找不到这个人' };
+  var nm = X.name || '这位亲人';
+  var n = blank(); n.name = info.name || ''; n.yr = info.yr || null; n.note = info.note || '';
+  if (rel === 'fa' || rel === 'mo'){
+    n.g = rel === 'fa' ? 'M' : 'F';
+    var cur = X[rel] && M[X[rel]];
+    if (cur){
+      if (cur.ph && !cur.name){ cur.name = n.name; cur.yr = n.yr; cur.note = n.note; cur.ph = false; return { id: cur.id }; }
+      return { err: nm + ' 已经登记了' + (rel === 'fa' ? '父亲' : '母亲') + '（' + (cur.name || '未填名字') + '）。' };
+    }
+    M[n.id] = n;
+    siblingsIncl(M, X).forEach(function(s){ if (!s[rel]) s[rel] = n.id; });
+    var other = X[rel === 'fa' ? 'mo' : 'fa'] && M[X[rel === 'fa' ? 'mo' : 'fa']];
+    if (other && !other.sp){ other.sp = n.id; n.sp = other.id; }
+    return { id: n.id };
+  }
+  if (rel === 'h' || rel === 'w'){
+    n.g = rel === 'h' ? 'M' : 'F';
+    if (X.sp && M[X.sp]) return { err: nm + ' 已经登记了配偶（' + (M[X.sp].name || '未填名字') + '）。' };
+    if ((rel === 'h' && X.g === 'M') || (rel === 'w' && X.g === 'F')) return { err: '性别对不上：' + nm + ' 登记的是' + (X.g === 'M' ? '男' : '女') + '性。' };
+    M[n.id] = n; X.sp = n.id; n.sp = X.id;
+    kidsOf(M, X.id).forEach(function(k){ if (X.g === 'M' && !k.mo) k.mo = n.id; if (X.g === 'F' && !k.fa) k.fa = n.id; });
+    return { id: n.id };
+  }
+  if (rel === 's' || rel === 'd'){
+    n.g = rel === 's' ? 'M' : 'F';
+    if (X.g === 'M'){ n.fa = X.id; if (X.sp) n.mo = X.sp; } else { n.mo = X.id; if (X.sp) n.fa = X.sp; }
+    M[n.id] = n; return { id: n.id };
+  }
+  // 兄弟姐妹
+  n.g = (rel === 'ob' || rel === 'lb') ? 'M' : 'F';
+  if (!X.fa && !X.mo){
+    var ph = blank(); ph.ph = true; M[ph.id] = ph; X.fa = ph.id;
+  }
+  n.fa = X.fa; n.mo = X.mo;
+  if (!n.yr){
+    var older = rel === 'ob' || rel === 'os';
+    var k = X.ord != null ? X.ord : X.yr;
+    if (k == null){ X.ord = 0; k = 0; }
+    n.ord = k + (older ? -0.5 : 0.5);
+    if (X.yr || X.ordY) n.ordY = true;
+  }
+  M[n.id] = n; return { id: n.id };
+}
+function removePerson(M, id, rootId){
+  if (id === rootId) return;
+  var p = M[id]; if (!p) return;
+  if (kidsOf(M, id).length){ p.name = ''; p.yr = null; p.note = ''; p.ph = true; }
+  else { if (p.sp && M[p.sp] && M[p.sp].sp === id) M[p.sp].sp = null; delete M[id]; }
+  // 清理不再连接任何人的占位
+  var again = true;
+  while (again){
+    again = false;
+    for (var k in M){
+      var q = M[k];
+      if (k !== rootId && q.ph && !q.name && !kidsOf(M, k).length && !q.fa && !q.mo){
+        if (q.sp && M[q.sp] && M[q.sp].sp === k) M[q.sp].sp = null;
+        delete M[k]; again = true;
+      }
+    }
+  }
+}
+
+if (typeof module !== 'undefined') module.exports = { termOf: termOf, relation: relation, bfs: bfs, calcChain: calcChain, invertChain: invertChain, addRel: addRel, removePerson: removePerson, describe: describe, DICT: DICT };
+
+
+/* ===== 3D 关系图 =====
+   布局：每一辈是一层圆环，上下排开；我在同辈这层的圆心。
+   方位固定：父系在左、本家在前、母系在右、姻亲在后。
+   连线只画「从我出发怎么走到 TA」的那一条，所以整张图是一棵从我长出去的树。 */
+var G3 = (function(){
+  var stage = null, labelsEl = null, msgEl = null, renderer = null, scene = null, camera = null, root = null;
+  var nodes = {}, edges = [], axisLabels = [], running = false, raf = 0, sig = '', lastCenter = null;
+  var HOME_THETA = 0, HOME_PHI = 1.02;
+  var cam = { theta: HOME_THETA, phi: HOME_PHI, r: 24, ty: 0 }, home = null;
+  var auto = false, dragging = false, introT = 1, reduced = false;
+  try { reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+  var H = 3.2;
+  var SECT = { core: Math.PI / 2, pat: Math.PI, mat: 0, inlaw: -Math.PI / 2 };
+
+  function css(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#888'; }
+  function ensureStage(){
+    if (stage) return stage;
+    stage = document.createElement('div'); stage.className = 'stage';
+    stage.innerHTML = '<div class="labels3d"></div>' +
+      '<div class="stage-ui"><div class="legend3d"><span><i style="background:var(--pat)"></i>父系 · 左</span><span><i style="background:var(--core)"></i>本家 · 前</span><span><i style="background:var(--mat)"></i>母系 · 右</span><span><i style="background:var(--inlaw)"></i>姻亲 · 后</span></div>' +
+      '<div class="stage-btns"><button class="btn" data-act="rot-toggle" id="rot-btn">自动旋转</button><button class="btn" data-act="view-reset">回到正面</button></div></div>' +
+      '<p class="stage-hint">拖动旋转 · 滚轮或双指缩放 · 点称呼看详情</p>' +
+      '<div class="stage-msg" hidden></div>';
+    labelsEl = stage.querySelector('.labels3d'); msgEl = stage.querySelector('.stage-msg');
+    bindPointer();
+    return stage;
+  }
+  function initGL(){
+    if (renderer) return true;
+    if (!window.THREE){ msgEl.hidden = false; msgEl.textContent = '3D 图需要联网加载图形组件，现在没能加载成功。请检查网络后刷新页面。'; return false; }
+    try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); }
+    catch (e) { msgEl.hidden = false; msgEl.textContent = '这台设备的浏览器不支持 3D 显示，可以切回「辈分表」查看。'; return false; }
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    stage.insertBefore(renderer.domElement, stage.firstChild);
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(38, 1, 0.1, 400);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+    var dl = new THREE.DirectionalLight(0xffffff, 0.6); dl.position.set(5, 12, 12); scene.add(dl);
+    if (window.ResizeObserver) new ResizeObserver(resize).observe(stage);
+    return true;
+  }
+  function resize(){
+    if (!renderer) return;
+    var w = stage.clientWidth, h = stage.clientHeight; if (!w || !h) return;
+    renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+  }
+
+  /* ---- 布局 ---- */
+  function sortRows(list){
+    return list.sort(function(a, b){ return a.sortKey[0] - b.sortKey[0] || (a.sortKey[1] < b.sortKey[1] ? -1 : a.sortKey[1] > b.sortKey[1] ? 1 : 0) || a.sortKey[2] - b.sortKey[2]; });
+  }
+  /* 放射状树：我在圆心，每个人占父节点扇区里的一小块，
+     离我几步就在第几圈，所以连线一层层向外张开、互不交叉 */
+  var STEP = 2.5;
+  // 树上的「上一个人」：按称呼链走，爸爸的哥哥挂在爸爸下面，姐姐直接挂在我下面
+  function parentOf(r){ if (r.p.id === S.center) return null; return r.toks.length > 1 ? r.toks[r.toks.length - 2].node : S.center; }
+  function layout(rows){
+    var kids = {}, rowOf = {};
+    rows.forEach(function(r){ rowOf[r.p.id] = r; var pv = parentOf(r); if (pv){ (kids[pv] = kids[pv] || []).push(r.p.id); } });
+    var weight = {};
+    function wt(id){ var k = kids[id] || [], s = 0; k.forEach(function(c){ s += wt(c); }); return (weight[id] = Math.max(1, s)); }
+    wt(S.center);
+    function order(ids){ return sortRows(ids.map(function(id){ return rowOf[id]; })).map(function(r){ return r.p.id; }); }
+    var pos = {}, depth = {}; pos[S.center] = new THREE.Vector3(0, 0, 0); depth[S.center] = 0;
+    // 第一圈的方位：妈妈那边在右、自家人在前、爸爸那边在左、配偶那边在后
+    var RANK = { m: 0, s: 1, d: 1, ob: 1, lb: 1, os: 1, ls: 1, xb: 1, xs: 1, f: 2, h: 3, w: 3 };
+    var first = (kids[S.center] || []).slice().sort(function(a, b){
+      var ca = baseCode(rowOf[a].codes[0]), cb = baseCode(rowOf[b].codes[0]);
+      return (RANK[ca] - RANK[cb]) || (ageKey(M[a]) - ageKey(M[b]));
+    });
+    var total = weight[S.center], unit = Math.PI * 2 / total;
+    var mW = 0; first.forEach(function(id){ if (baseCode(rowOf[id].codes[0]) === 'm') mW += weight[id]; });
+    var coreW = 0; first.forEach(function(id){ if (RANK[baseCode(rowOf[id].codes[0])] === 1) coreW += weight[id]; });
+    // 让「自家人」这一块正对前方
+    var a0 = Math.PI / 2 - (mW + coreW / 2) * unit;
+    function place(ids, start, d){
+      var a = start;
+      ids.forEach(function(id){
+        var span = weight[id] * unit, mid = a + span / 2, r = rowOf[id];
+        depth[id] = d;
+        pos[id] = new THREE.Vector3(Math.cos(mid) * d * STEP, r.gen * H, Math.sin(mid) * d * STEP);
+        if (kids[id]) place(order(kids[id]), a, d + 1);
+        a += span;
+      });
+    }
+    place(first, a0, 1);
+    var ringR = {};
+    rows.forEach(function(r){ var p = pos[r.p.id]; ringR[r.gen] = Math.max(ringR[r.gen] || 1.6, Math.hypot(p.x, p.z) + 1); });
+    var R = 0; Object.keys(ringR).forEach(function(g){ R = Math.max(R, ringR[g]); });
+    return { pos: pos, R: R, ringR: ringR };
+  }
+
+  function clearScene(){
+    if (!root) return;
+    scene.remove(root);
+    root.traverse(function(o){ if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+    root = null; nodes = {}; edges = []; axisLabels = []; labelsEl.innerHTML = '';
+  }
+  function build(all){
+    clearScene();
+    root = new THREE.Group(); scene.add(root);
+    var rows = all.rows, L = layout(rows), pos = L.pos, R = L.R;
+    var col = { pat: css('--pat'), core: css('--core'), mat: css('--mat'), inlaw: css('--inlaw'), seal: css('--seal'), muted: css('--muted') };
+    var sphereG = new THREE.SphereGeometry(1, 28, 20);
+    var gens = {};
+    rows.forEach(function(r){
+      var p = r.p, isC = p.id === S.center, ph = p.ph && !p.name;
+      var c = new THREE.Color(isC ? col.seal : col[r.side]);
+      var mat = new THREE.MeshStandardMaterial({ color: c, roughness: 0.5, metalness: 0.05, transparent: true, opacity: 1, emissive: c, emissiveIntensity: isC ? 0.3 : 0.1 });
+      var m = new THREE.Mesh(sphereG, mat), s = isC ? 0.5 : 0.24;
+      m.scale.setScalar(s); m.userData.base = s; root.add(m);
+      var lab = document.createElement('button');
+      lab.type = 'button'; lab.className = 'n3 s-' + r.side + (isC ? ' c' : '') + (ph ? ' ph' : ''); lab.setAttribute('data-id', p.id);
+      var term = isC ? (S.center === DATA.root ? '我' : '本人') : r.term.t;
+      lab.textContent = term; lab.setAttribute('title', term + (p.name ? '（' + p.name + '）' : ''));
+      labelsEl.appendChild(lab);
+      nodes[p.id] = { mesh: m, target: pos[p.id], label: lab, row: r, ph: ph, alpha: 1 };
+      gens[r.gen] = 1;
+    });
+    // 树状连线：每个人只连到「从我走过来」的上一个人
+    rows.forEach(function(r){
+      var pv = parentOf(r); if (!pv || !nodes[pv]) return;
+      var g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
+      var ln = new THREE.Line(g, new THREE.LineBasicMaterial({ color: col[r.side], transparent: true, opacity: 0.55 }));
+      root.add(ln); edges.push({ a: pv, b: r.p.id, line: ln, side: r.side });
+    });
+    // 每一辈一圈细环 + 中轴
+    var keys = Object.keys(gens).map(Number), top = Math.max.apply(null, keys), bot = Math.min.apply(null, keys);
+    keys.forEach(function(g){
+      var pts = [];
+      for (var i = 0; i <= 120; i++){ var a = i / 120 * Math.PI * 2; pts.push(new THREE.Vector3(Math.cos(a) * L.ringR[g], g * H, Math.sin(a) * L.ringR[g])); }
+      root.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: g === 0 ? col.seal : col.muted, transparent: true, opacity: g === 0 ? 0.35 : 0.16 })));
+      if (g !== 0){
+        var el = document.createElement('span'); el.className = 'g3';
+        el.textContent = genName(g) + (g > 0 ? ' +' + g : ' ' + g);
+        labelsEl.appendChild(el);
+        axisLabels.push({ el: el, at: new THREE.Vector3(0, g * H, 0) });
+      }
+    });
+    if (top > bot){
+      root.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, bot * H, 0), new THREE.Vector3(0, top * H, 0)]),
+        new THREE.LineDashedMaterial({ color: col.muted, dashSize: 0.25, gapSize: 0.2, transparent: true, opacity: 0.35 })).computeLineDistances());
+    }
+    home = { ty: (top + bot) / 2 * H - 0.5, r: Math.max(R * 2.55, (top - bot + 1) * H * 2) };
+    introT = reduced ? 1 : 0;
+  }
+
+  var onPath = {}, pathEdges = {}, hasSel = false;
+  function applySelection(){
+    onPath = {}; pathEdges = {}; hasSel = !!(S.sel && nodes[S.sel]);
+    if (hasSel){
+      var pv = S.center; onPath[pv] = 1;
+      nodes[S.sel].row.toks.forEach(function(t){ onPath[t.node] = 1; pathEdges[pv + '>' + t.node] = 1; pv = t.node; });
+    }
+    Object.keys(nodes).forEach(function(id){
+      var n = nodes[id], sel = id === S.sel;
+      n.label.classList.toggle('sel', sel); n.label.classList.toggle('path', !!onPath[id] && !sel);
+      n.mesh.userData.boost = sel ? 1.7 : onPath[id] && hasSel ? 1.3 : 1;
+    });
+    var seal = css('--seal');
+    edges.forEach(function(e){
+      e.on = !!pathEdges[e.a + '>' + e.b];
+      e.line.material.color.set(e.on ? seal : css('--' + e.side));
+    });
+  }
+
+  /* ---- 交互 ---- */
+  function bindPointer(){
+    var pts = {}, start = null, moved = 0, pinch0 = 0, r0 = 0;
+    stage.addEventListener('pointerdown', function(e){
+      if (e.target.closest('.stage-ui')) return;
+      pts[e.pointerId] = { x: e.clientX, y: e.clientY };
+      try { stage.setPointerCapture(e.pointerId); } catch (x) {}
+      var ids = Object.keys(pts);
+      if (ids.length === 1){ start = { t: e.target.closest('.n3') }; moved = 0; dragging = true; }
+      if (ids.length === 2){ var a = pts[ids[0]], b = pts[ids[1]]; pinch0 = Math.hypot(a.x - b.x, a.y - b.y); r0 = cam.r; }
+    });
+    stage.addEventListener('pointermove', function(e){
+      if (!pts[e.pointerId]) return;
+      var p = pts[e.pointerId], dx = e.clientX - p.x, dy = e.clientY - p.y;
+      p.x = e.clientX; p.y = e.clientY;
+      var ids = Object.keys(pts);
+      if (ids.length === 1){
+        moved += Math.abs(dx) + Math.abs(dy);
+        if (moved > 4 && auto){ auto = false; syncRotBtn(); }
+        cam.theta -= dx * 0.007; cam.phi = Math.max(0.75, Math.min(1.95, cam.phi - dy * 0.006));
+      } else if (ids.length === 2 && pinch0){
+        var a = pts[ids[0]], b = pts[ids[1]];
+        cam.r = clampR(r0 * pinch0 / Math.max(Math.hypot(a.x - b.x, a.y - b.y), 1));
+      }
+    });
+    function end(e){
+      if (!pts[e.pointerId]) return;
+      delete pts[e.pointerId];
+      if (!Object.keys(pts).length){
+        dragging = false;
+        if (start && moved <= 4){
+          if (start.t){ var id = start.t.getAttribute('data-id'); S.sel = S.sel === id ? null : id; render(); }
+          else if (S.sel){ S.sel = null; render(); }
+        }
+        start = null; pinch0 = 0;
+      }
+    }
+    stage.addEventListener('pointerup', end); stage.addEventListener('pointercancel', end);
+    stage.addEventListener('wheel', function(e){ e.preventDefault(); cam.r = clampR(cam.r * (1 + Math.sign(e.deltaY) * 0.08)); }, { passive: false });
+    stage.addEventListener('keydown', function(e){
+      if (e.key === 'Enter' && e.target.classList.contains('n3')){ e.preventDefault(); var id = e.target.getAttribute('data-id'); S.sel = S.sel === id ? null : id; render(); }
+    });
+  }
+  function fitR(){ var asp = camera ? camera.aspect : 1.6; return clampR(home.r * (asp < 1.3 ? Math.min(1.4, 0.85 / asp) : 1)); }
+  function clampR(r){ return Math.max(6, Math.min(110, r)); }
+  function syncRotBtn(){ var b = document.getElementById('rot-btn'); if (b) b.textContent = auto ? '停止旋转' : '自动旋转'; }
+
+  /* ---- 每一帧 ---- */
+  var v = null, toCam = null;
+  function frame(){
+    if (!running) return;
+    raf = requestAnimationFrame(frame);
+    if (!root) return;
+    if (!v){ v = new THREE.Vector3(); toCam = new THREE.Vector3(); }
+    if (auto && !dragging) cam.theta += 0.0018;
+    if (introT < 1) introT = Math.min(1, introT + 0.025);
+    var k = 1 - Math.pow(1 - introT, 3);
+    cam.ty += (home.ty - cam.ty) * 0.1;
+    camera.position.set(Math.sin(cam.phi) * Math.sin(cam.theta) * cam.r, cam.ty + Math.cos(cam.phi) * cam.r, Math.sin(cam.phi) * Math.cos(cam.theta) * cam.r);
+    camera.lookAt(0, cam.ty, 0);
+    toCam.set(Math.sin(cam.theta), 0, Math.cos(cam.theta));
+    var w = stage.clientWidth, h = stage.clientHeight;
+    Object.keys(nodes).forEach(function(id){
+      var n = nodes[id], t = n.target;
+      n.mesh.position.set(t.x * k, t.y * k, t.z * k);
+      n.mesh.scale.setScalar(n.mesh.userData.base * (n.mesh.userData.boost || 1));
+      // 转到背面的人自动变淡，避免前后叠在一起
+      var rad = Math.hypot(t.x, t.z), facing = rad > 0.01 ? (t.x * toCam.x + t.z * toCam.z) / rad : 1;
+      var a = 0.22 + 0.78 * Math.pow((facing + 1) / 2, 1.3);
+      if (hasSel) a = onPath[id] ? 1 : Math.min(a, 0.14);
+      if (n.ph) a *= 0.6;
+      n.alpha = a; n.mesh.material.opacity = a;
+      var el = n.label;
+      v.copy(n.mesh.position); v.y -= n.mesh.scale.x + 0.08; v.project(camera);
+      if (v.z > 1){ el.style.visibility = 'hidden'; return; }
+      var dist = camera.position.distanceTo(n.mesh.position), sc = Math.max(0.7, Math.min(1.15, 24 / dist));
+      el.style.visibility = 'visible';
+      el.style.transform = 'translate(' + ((v.x + 1) / 2 * w).toFixed(1) + 'px,' + ((1 - v.y) / 2 * h).toFixed(1) + 'px) translate(-50%,0) scale(' + sc.toFixed(3) + ')';
+      el.style.zIndex = String(1000 - Math.round(dist * 5));
+      el.style.opacity = String(Math.max(a, id === S.sel ? 1 : 0) * (introT < 1 ? k : 1));
+      el.style.pointerEvents = a < 0.3 ? 'none' : '';
+    });
+    edges.forEach(function(e){
+      var A = nodes[e.a], B = nodes[e.b], pa = A.mesh.position, pb = B.mesh.position, arr = e.line.geometry.attributes.position.array;
+      arr[0] = pa.x; arr[1] = pa.y; arr[2] = pa.z; arr[3] = pb.x; arr[4] = pb.y; arr[5] = pb.z;
+      e.line.geometry.attributes.position.needsUpdate = true;
+      e.line.material.opacity = e.on ? 0.95 : Math.min(A.alpha, B.alpha) * (hasSel ? 0.5 : 0.6);
+    });
+    axisLabels.forEach(function(g){
+      v.copy(g.at).project(camera);
+      g.el.style.visibility = v.z > 1 ? 'hidden' : 'visible';
+      g.el.style.transform = 'translate(' + ((v.x + 1) / 2 * w).toFixed(1) + 'px,' + ((1 - v.y) / 2 * h).toFixed(1) + 'px) translate(-50%,-50%)';
+    });
+    renderer.render(scene, camera);
+  }
+
+  function signature(all){
+    return S.center + '|' + document.documentElement.getAttribute('data-theme') + '|' + (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches) + '|' +
+      all.rows.map(function(r){ return r.p.id + ':' + r.term.t + ':' + r.side + ':' + (r.p.ph && !r.p.name ? 1 : 0) + ':' + r.p.fa + r.p.mo + r.p.sp; }).join(',');
+  }
+  return {
+    show: function(slot, all){
+      slot.appendChild(ensureStage());
+      if (!initGL()) return;
+      resize();
+      var sg = signature(all);
+      if (sg !== sig){
+        var recenter = lastCenter !== S.center;
+        sig = sg; build(all);
+        if (recenter){ cam.r = fitR(); cam.ty = home.ty; cam.theta = HOME_THETA; cam.phi = HOME_PHI; }
+        else introT = 1;
+        lastCenter = S.center;
+      }
+      applySelection(); syncRotBtn();
+      if (!running){ running = true; frame(); }
+    },
+    hide: function(){ running = false; cancelAnimationFrame(raf); },
+    toggleRotate: function(){ auto = !auto; syncRotBtn(); },
+    resetView: function(){ if (!home) return; cam.theta = HOME_THETA; cam.phi = HOME_PHI; cam.r = fitR(); auto = false; syncRotBtn(); },
+    invalidate: function(){ sig = ''; }
+  };
+})();
+
+
+/* ===== 页面 ===== */
+var RESET = ":root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}";
+var FONTS = '<link rel="preconnect" href="https://fonts.googleapis.com">\n<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@600;900&display=swap">\n';
+var THREE_TAG = '<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></' + 'script>\n';
+var HOSTS = '<div id="app"></div><div id="drawer-host"></div><div id="modal-host"></div><div id="toast" role="status" aria-live="polite"></div>\n';
+var LS_KEY = 'family-generations-v1';
+var NOW = new Date().getFullYear();
+var SIDES = [
+  { k: 'pat', name: '父系', sub: '爸爸那边' },
+  { k: 'core', name: '本家', sub: '自家人' },
+  { k: 'mat', name: '母系', sub: '妈妈那边' },
+  { k: 'inlaw', name: '姻亲', sub: '配偶与亲家那边' }
+];
+var SIDE_NAME = { pat: '父系 · 爸爸那边', core: '本家', mat: '母系 · 妈妈那边', inlaw: '姻亲' };
+var GEN_NAME = { '4': '高祖辈', '3': '曾祖辈', '2': '祖辈', '1': '父辈', '0': '同辈', '-1': '子辈', '-2': '孙辈', '-3': '曾孙辈', '-4': '玄孙辈' };
+var CN_NUM = ['零', '一', '两', '三', '四', '五', '六'];
+var CALC_KEYS = [['f','爸爸'],['m','妈妈'],['h','老公'],['w','老婆'],['s','儿子'],['ob','哥哥'],['lb','弟弟'],['os','姐姐'],['ls','妹妹'],['d','女儿']];
+
+var ORIGINAL = JSON.parse(document.getElementById('family-data').textContent);
+var DATA = clone(ORIGINAL);
+var M = {};
+var S = { center: DATA.root, sel: null, edit: false, dirty: false, mode: 'view', calc: [], calcG: null, saving: false, view: 'table' };
+try { if (location.hash === '#3d') S.view = '3d'; else if (localStorage.getItem('family-view') === '3d') S.view = '3d'; } catch (e) {}
+var ART = null;
+
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function reindex(){ M = {}; DATA.people.forEach(function(p){ M[p.id] = p; }); if (!M[S.center]) S.center = DATA.root; if (S.sel && !M[S.sel]) S.sel = null; }
+function commit(){ DATA.people = Object.keys(M).map(function(k){ return M[k]; }); DATA.sample = false; S.dirty = true; if (S.mode === 'local') saveLocal(); reindex(); }
+function genName(g){ return GEN_NAME[String(g)] || (g > 0 ? '上' + g + '代' : '下' + (-g) + '代'); }
+function genPhrase(g){ if (g === 0) return '同一辈'; return (g > 0 ? '高' : '低') + (CN_NUM[Math.abs(g)] || Math.abs(g)) + '辈'; }
+function dispName(p){ return p.name || ''; }
+function centerLabel(){ return S.center === DATA.root ? '我' : (M[S.center].name || '这位亲人'); }
+
+function toast(msg){
+  var t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast._t); toast._t = setTimeout(function(){ t.classList.remove('show'); }, 3200);
+}
+
+/* ---------- 计算整张图 ---------- */
+function computeAll(){
+  var prev = bfs(M, S.center), rows = [];
+  var rootPrev = bfs(M, DATA.root);
+  var rootToCenter = relation(M, DATA.root, S.center, rootPrev);
+  var centerAbs = rootToCenter ? rootToCenter.gen : 0;
+  DATA.people.forEach(function(p){
+    var r = relation(M, S.center, p.id, prev);
+    if (!r) return;
+    var toks = r.toks, last = toks[toks.length - 1];
+    var anchor = S.center, spouseFlag = 0;
+    if (toks.length){
+      var lb = baseCode(last.c);
+      if (lb === 'h' || lb === 'w'){ spouseFlag = 1; anchor = toks.length > 1 ? toks[toks.length - 2].node : S.center; }
+      else anchor = p.id;
+    }
+    r.p = p; r.sortKey = [ageKey(M[anchor]), anchor, spouseFlag];
+    rows.push(r);
+  });
+  return { rows: rows, centerAbs: centerAbs, prev: prev };
+}
+function pathSet(prev, id){
+  var set = {}; var raw = rawPath(prev, id); if (!raw) return set;
+  set[S.center] = 1; raw.forEach(function(t){ set[t.node] = 1; }); return set;
+}
+
+/* ---------- 渲染 ---------- */
+function render(){
+  reindex();
+  var all = computeAll(), rows = all.rows;
+  var onPath = S.sel ? pathSet(all.prev, S.sel) : {};
+  var gens = {}; rows.forEach(function(r){ (gens[r.gen] = gens[r.gen] || []).push(r); });
+  var keys = Object.keys(gens).map(Number).sort(function(a, b){ return b - a; });
+  var named = DATA.people.filter(function(p){ return !p.ph || p.name; });
+  var canEdit = S.mode !== 'view';
+
+  var h = '';
+  var sideCount = { pat: 0, core: 0, mat: 0, inlaw: 0 };
+  rows.forEach(function(r){ if (r.p.id !== S.center) sideCount[r.side]++; });
+  h += '<div class="wrap' + (FIRST_RENDER ? ' intro' : '') + '"><header class="masthead"><div class="brand"><span class="seal" aria-hidden="true">谱</span><div>';
+  h += '<p class="eyebrow">以' + esc(centerLabel()) + '为中心 · 家族辈分</p>';
+  h += '<h1>' + esc(DATA.title || '我的家族辈分谱') + '</h1>';
+  h += '<p class="stats"><span><b>' + named.length + '</b>位亲人</span><span><b>' + keys.length + '</b>代同谱</span><span>点任意一位，看怎么称呼</span></p></div></div>';
+  h += '<div class="controls"><label class="persp"><span>视角</span><select id="center-select" aria-label="站在谁的角度看">';
+  var opts = rows.slice().filter(function(r){ return !r.p.ph || r.p.name; }).sort(function(a, b){ return b.gen - a.gen || a.sortKey[0] - b.sortKey[0]; });
+  var rp = bfs(M, DATA.root);
+  opts.forEach(function(r){
+    var rr = relation(M, DATA.root, r.p.id, rp);
+    var label = r.p.id === DATA.root ? '我（' + (r.p.name || '自己') + '）' : (r.p.name || '未填名字') + '（我的' + rr.term.t.split(' / ')[0] + '）';
+    h += '<option value="' + r.p.id + '"' + (r.p.id === S.center ? ' selected' : '') + '>' + esc(label) + '</option>';
+  });
+  h += '</select></label>';
+  if (canEdit) h += S.edit ? '<button class="btn primary" data-act="add">＋ 添加亲属</button><button class="btn" data-act="settings">设置与备份</button><button class="btn ghost" data-act="edit-off">完成编辑</button>' : '<button class="btn" data-act="edit-on">编辑家谱</button>';
+  h += '</div></header>';
+
+  var ICON_TABLE = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="2" y="2.5" width="12" height="11" rx="2"/><path d="M2 6.5h12M6.5 6.5v7"/></svg>';
+  var ICON_3D = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><path d="M8 1.8 13.6 5v6L8 14.2 2.4 11V5z"/><path d="M2.4 5 8 8.2 13.6 5M8 8.2v6"/></svg>';
+  h += '<nav class="viewbar"><div class="seg" role="tablist" aria-label="查看方式"><button role="tab" aria-selected="' + (S.view === 'table') + '" data-act="view" data-view="table">' + ICON_TABLE + '辈分表</button><button role="tab" aria-selected="' + (S.view === '3d') + '" data-act="view" data-view="3d">' + ICON_3D + '3D 关系图</button></div>';
+  h += S.view === '3d' ? '<p class="hint"><span>' + esc(centerLabel()) + '在正中间，亲人一层层向外延伸</span><span>上下是辈分，方位是哪一边</span></p></nav>'
+    : '<p class="hint"><span>越往上辈分越高</span><span>左边爸爸家，右边妈妈家</span><span>填出生年份可分清堂哥、堂弟</span></p></nav>';
+
+  if (S.center !== DATA.root){
+    h += '<div class="viewing"><span>现在站在 <b>' + esc(centerLabel()) + '</b> 的角度，每张卡片写的是 TA 该怎么称呼对方。</span><button class="btn" data-act="center-root">回到我的角度</button></div>';
+  }
+  if (DATA.sample){
+    h += '<div class="notice"><span class="stamp">示例</span><p><b>这是一份示例家谱，</b>名字都是虚构的，用来演示效果。' + (canEdit ? '点「编辑家谱」直接改，或清空后从你自己开始填。' : '') + '</p>' + (canEdit ? '<button class="btn danger" data-act="clear-ask">清空示例，从我开始</button>' : '') + '</div>';
+  }
+
+  if (S.view === '3d') h += '<div id="stage-slot"></div>';
+  else {
+  var ci = 0;
+  h += '<section class="panel"><div class="chart-scroll"><div class="chart" role="list"><div class="corner">辈分</div>';
+  SIDES.forEach(function(s){ h += '<div class="colhead ' + s.k + '"><strong>' + s.name + '</strong><span>' + s.sub + '</span><em>' + sideCount[s.k] + ' 人</em></div>'; });
+  keys.forEach(function(g, gi){
+    var abs = g + all.centerAbs, zb = (DATA.zibei || {})[String(abs)] || '';
+    h += '<div class="band' + (gi === 0 ? ' first' : '') + (gi === keys.length - 1 ? ' last' : '') + (g === 0 ? ' is-zero' : '') + '"><div class="gen' + (g === 0 ? ' is-zero' : '') + '"><span class="gen-num">' + (g > 0 ? '+' + g : g) + '</span><span class="gen-name">' + genName(g) + '</span>';
+    if (S.edit) h += '<button class="zibei' + (zb ? '' : ' empty') + '" data-act="zibei" data-gen="' + abs + '" title="设置这一辈的字辈">' + (zb ? esc(zb) + '字辈' : '＋字辈') + '</button>';
+    else if (zb) h += '<span class="zibei" title="这一辈名字里共用的字">' + esc(zb) + '字辈</span>';
+    h += '</div>';
+    SIDES.forEach(function(s){
+      var list = gens[g].filter(function(r){ return r.side === s.k; }).sort(function(a, b){
+        return a.sortKey[0] - b.sortKey[0] || (a.sortKey[1] < b.sortKey[1] ? -1 : a.sortKey[1] > b.sortKey[1] ? 1 : 0) || a.sortKey[2] - b.sortKey[2];
+      });
+      h += '<div class="cell ' + s.k + (list.length ? '' : ' empty') + (g === 0 ? ' row0' : '') + '"><span class="cell-tag">' + s.name + ' · ' + s.sub + '</span>';
+      // 同一个「锚点」下的本人和配偶放成一对，中间用线连起来
+      for (var i = 0; i < list.length; i++){
+        var a = list[i], b = list[i + 1];
+        if (b && b.sortKey[1] === a.sortKey[1] && b.sortKey[2] === 1 && a.sortKey[2] === 0){
+          h += '<div class="pair">' + cardHTML(a, onPath, ci++) + '<span class="tie" aria-hidden="true" style="--i:' + ci + '"></span>' + cardHTML(b, onPath, ci++) + '</div>'; i++;
+        } else h += cardHTML(a, onPath, ci++);
+      }
+      h += '</div>';
+    });
+    h += '</div>';
+  });
+  h += '</div></div></section>';
+  }
+
+  h += calcHTML();
+  h += '<footer class="foot"><span>称呼按普通话里最常见的叫法推算，各地习惯不同（比如姥爷 / 外公、姑妈 / 姑姑），以你家里的叫法为准。';
+  if (S.mode === 'local') h += ' 你在这里填写的家人信息只保存在你自己的浏览器里，不会上传到任何地方；换电脑或清除浏览器数据前，记得在「设置与备份」里复制一份备份。';
+  h += '</span></footer></div>';
+
+  if (S.edit && S.mode === 'publish' && S.dirty){
+    h += '<div class="savebar" role="region" aria-label="保存"><p>有还没保存的修改。保存后，所有打开这个页面的人都能看到。</p><button class="btn" data-act="discard">放弃修改</button><button class="btn seal-btn" data-act="save"' + (S.saving ? ' disabled' : '') + '>' + (S.saving ? '正在保存…' : '保存到页面') + '</button></div>';
+  }
+  var slot0 = document.getElementById('stage-slot'); if (slot0 && slot0.firstChild) slot0.removeChild(slot0.firstChild);
+  document.getElementById('app').innerHTML = h;
+  var slot = document.getElementById('stage-slot');
+  if (slot) G3.show(slot, all); else G3.hide();
+  renderCalcOut();
+  renderDrawer();
+  FIRST_RENDER = false;
+}
+var FIRST_RENDER = true;
+
+function cardHTML(r, onPath, idx){
+  var p = r.p, isC = p.id === S.center;
+  var cls = 'pcard' + (isC ? ' is-center' : '') + (p.ph && !p.name ? ' ph' : '') + (S.sel === p.id ? ' is-sel' : (onPath[p.id] ? ' on-path' : ''));
+  var term = isC ? (S.center === DATA.root ? '我' : '本人') : r.term.t;
+  var via = '';
+  if (isC) via = '中心';
+  else if (r.codes.length === 1) via = r.term.alt ? r.term.alt.split('、')[0] : '';
+  else if (r.sortKey[2] === 1){
+    // 配偶写成「伯父的妻子」，比「爸爸的哥哥的妻子」短也更好懂
+    var last = baseCode(r.codes[r.codes.length - 1]);
+    via = termOf(r.codes.slice(0, -1)).t.split(' / ')[0] + '的' + (last === 'h' ? '丈夫' : '妻子');
+  } else via = describe(r.codes);
+  var h = '<button class="' + cls + '" role="listitem" data-act="sel" data-id="' + p.id + '" style="--i:' + (idx || 0) + '" title="' + esc(p.name || '') + '">';
+  h += '<span class="term">' + esc(term) + '</span>';
+  if (r.term.amb && !isC) h += '<span class="amb">填上出生年份可确定</span>';
+  if (via) h += '<span class="via">' + esc(via) + '</span>';
+  return h + '</button>';
+}
+
+var CALC_GROUPS = [['长辈', [['f','爸爸'],['m','妈妈']]], ['平辈', [['ob','哥哥'],['lb','弟弟'],['os','姐姐'],['ls','妹妹']]], ['配偶', [['h','老公'],['w','老婆']]], ['晚辈', [['s','儿子'],['d','女儿']]]];
+function calcHTML(){
+  var h = '<section class="panel calc" aria-labelledby="calc-title"><div class="calc-in"><h2 id="calc-title">称呼计算器</h2><p class="lead">没录进家谱的亲戚，也能一步步点出来，比如「妈妈 → 哥哥 → 女儿」。</p>';
+  var myG = calcGender();
+  h += '<div class="kgroup"><span class="klabel">我是</span><div class="gseg" role="group" aria-label="我的性别"><button data-act="calc-g" data-g="M" aria-pressed="' + (myG === 'M') + '">男</button><button data-act="calc-g" data-g="F" aria-pressed="' + (myG === 'F') + '">女</button></div><span class="gnote">决定 TA 叫你侄子还是侄女</span></div>';
+  CALC_GROUPS.forEach(function(g){
+    h += '<div class="kgroup"><span class="klabel">' + g[0] + '</span><div class="krow">';
+    g[1].forEach(function(k){ h += '<button class="key" data-act="calc" data-c="' + k[0] + '">' + k[1] + '</button>'; });
+    h += '</div></div>';
+  });
+  h += '<div class="kact"><button class="btn" data-act="calc-back">退一步</button><button class="btn ghost" data-act="calc-clear">清空</button></div></div><div class="calc-out" id="calc-out" aria-live="polite"></div></section>';
+  return h;
+}
+function calcGender(){ return S.calcG || (M[DATA.root] && M[DATA.root].g) || 'M'; }
+function syncGenderButtons(){
+  var g = calcGender();
+  Array.prototype.forEach.call(document.querySelectorAll('[data-act="calc-g"]'), function(b){ b.setAttribute('aria-pressed', String(b.dataset.g === g)); });
+}
+function renderCalcOut(){
+  var el = document.getElementById('calc-out'); if (!el) return;
+  if (!S.calc.length){
+    el.innerHTML = '<div class="chainline"><span class="chip me">我</span><span class="arrow">→ 点按钮开始</span></div><div class="calc-term" style="color:var(--faint)">？</div><div class="calc-meta">每点一下，就往外走一层关系。结果会告诉你：该叫 TA 什么、TA 叫你什么、差几辈。</div>';
+    return;
+  }
+  var g = calcGender(), c = calcChain(S.calc, g);
+  var line = '<span class="chip me">我</span>';
+  S.calc.forEach(function(k){ line += '<span class="arrow">的</span><span class="chip">' + WORD_CALC[k] + '</span>'; });
+  var h = '<div class="chainline">' + line + '</div>';
+  if (!c.codes.length){
+    h += '<div class="calc-term">就是你自己</div><div class="calc-meta">这一串关系绕了一圈，又回到了你本人。</div>';
+    el.innerHTML = h; return;
+  }
+  var t = termOf(c.codes), back = termOf(invertChain(c.codes, g));
+  var genTxt = c.gen === 0 ? '同辈 · 和我同一辈' : genName(c.gen) + ' · 比我' + genPhrase(c.gen);
+  h += '<div class="calc-res"><div class="res-main"><span class="res-lbl">我该叫 TA</span><span class="calc-term">' + esc(t.t) + '</span>' + (t.alt ? '<span class="res-alt">也叫 ' + esc(t.alt) + '</span>' : '') + '</div>';
+  h += '<div class="res-side"><div><span class="res-lbl">TA 叫我</span><b>' + esc(back.t) + '</b></div><div><span class="res-lbl">辈分</span><span>' + esc(genTxt) + '</span></div></div></div>';
+  var notes = [];
+  if (t.amb || back.amb) notes.push('带「/」的要看两人谁年纪大');
+  if (c.selfHint) notes.push('这一步也可能又指回同一个人');
+  if (!t.exact) notes.push('这层关系没有常用的专门称呼，按关系描述');
+  if (notes.length) h += '<div class="calc-meta">' + esc(notes.join(' · ')) + '</div>';
+  el.innerHTML = h;
+}
+var WORD_CALC = { f: '爸爸', m: '妈妈', h: '老公', w: '老婆', s: '儿子', d: '女儿', ob: '哥哥', lb: '弟弟', os: '姐姐', ls: '妹妹' };
+
+/* ---------- 详情 ---------- */
+function renderDrawer(){
+  var host = document.getElementById('drawer-host');
+  if (!S.sel || !M[S.sel]){ host.innerHTML = ''; return; }
+  var p = M[S.sel], isC = p.id === S.center;
+  var r = relation(M, S.center, p.id), back = isC ? null : relation(M, p.id, S.center);
+  var cl = centerLabel();
+  var h = '<aside class="drawer side-' + (isC ? 'core' : r.side) + '" role="dialog" aria-label="亲人详情"><button class="d-close" data-act="close" aria-label="关闭">×</button><div class="d-head">';
+  h += '<div class="d-eyebrow">' + (isC ? '当前视角的中心' : SIDE_NAME[r.side] + ' · ' + esc(cl) + '称呼 TA 为') + '</div>';
+  h += '<h2 class="d-term">' + esc(isC ? (S.center === DATA.root ? '我' : '本人') : r.term.t) + '</h2>';
+  if (!isC && r.term.alt) h += '<div class="d-alt">也叫 ' + esc(r.term.alt) + '</div>';
+  h += '<div class="d-name">' + (p.name ? esc(p.name) : '<span style="color:var(--muted)">未填名字</span>');
+  if (p.yr) h += ' <small>' + p.yr + ' 年生 · ' + Math.max(0, NOW - p.yr) + ' 岁</small>';
+  h += '</div></div>';
+  if (!isC){
+    h += '<div class="chainline">';
+    h += '<span class="chip me">' + esc(cl) + '</span>';
+    r.toks.forEach(function(t){
+      var q = M[t.node], sub = relation(M, S.center, t.node);
+      h += '<span class="arrow">→</span><span class="chip">' + esc(sub.term.t.split(' / ')[0]) + (q.name ? ' ' + esc(q.name) : '') + '</span>';
+    });
+    h += '</div>';
+    h += '<dl class="facts">';
+    h += '<dt>辈分</dt><dd>' + genName(r.gen) + ' · ' + (r.gen === 0 ? '和' + esc(cl) + '同一辈' : '比' + esc(cl) + genPhrase(r.gen)) + '</dd>';
+    h += '<dt>哪一边</dt><dd><span class="side-dot" style="background:var(--' + r.side + ')"></span>' + SIDE_NAME[r.side] + '</dd>';
+    h += '<dt>关系</dt><dd>' + esc(cl) + '的' + esc(describe(r.codes)) + '</dd>';
+    if (back) h += '<dt>TA 叫' + (S.center === DATA.root ? '我' : '对方') + '</dt><dd><b>' + esc(back.term.t) + '</b></dd>';
+    h += '</dl>';
+  }
+  if (p.note) h += '<p class="d-note">' + esc(p.note) + '</p>';
+  if (p.ph && !p.name) h += '<p class="small">这个位置是为了把亲戚连起来自动加的，可以点「编辑资料」填上名字。</p>';
+  h += '<div class="d-actions">';
+  if (!isC && (!p.ph || p.name)) h += '<button class="btn primary" data-act="center-here">站在 TA 的角度看</button>';
+  if (S.edit){
+    h += '<button class="btn" data-act="edit-person">编辑资料</button><button class="btn" data-act="add-to">给 TA 添加亲属</button>';
+    if (p.id !== DATA.root) h += '<button class="btn danger" data-act="del-ask">删除</button>';
+  }
+  h += '</div></aside>';
+  host.innerHTML = h;
+}
+
+/* ---------- 弹窗 ---------- */
+function openModal(html){ document.getElementById('modal-host').innerHTML = '<div class="overlay" data-act="overlay"><div class="modal" role="dialog" aria-modal="true">' + html + '</div></div>'; var f = document.querySelector('.modal input, .modal select'); if (f) f.focus(); }
+function closeModal(){ document.getElementById('modal-host').innerHTML = ''; }
+
+function personOptions(selId){
+  var rp = bfs(M, DATA.root), out = '';
+  var list = DATA.people.map(function(p){ return { p: p, r: relation(M, DATA.root, p.id, rp) }; }).filter(function(x){ return x.r; });
+  list.sort(function(a, b){ return b.r.gen - a.r.gen || ageKey(a.p) - ageKey(b.p); });
+  list.forEach(function(x){
+    var t = x.p.id === DATA.root ? '我' : x.r.term.t.split(' / ')[0];
+    var label = x.p.id === DATA.root ? '我' + (x.p.name ? '（' + x.p.name + '）' : '') : t + '（' + (x.p.name || '未填名字') + '）';
+    out += '<option value="' + x.p.id + '"' + (x.p.id === selId ? ' selected' : '') + '>' + esc(label) + '</option>';
+  });
+  return out;
+}
+function openAdd(anchorId){
+  var h = '<h2>添加亲属</h2>';
+  h += '<div class="field"><span>TA 和谁是什么关系</span><div class="rel-row">TA 是<select id="f-anchor">' + personOptions(anchorId || DATA.root) + '</select>的<select id="f-rel">';
+  Object.keys(REL_LABEL).forEach(function(k){ h += '<option value="' + k + '">' + REL_LABEL[k] + '</option>'; });
+  h += '</select></div></div>';
+  h += '<label class="field"><span>姓名（不知道可以先空着）</span><input id="f-name" maxlength="20" autocomplete="off"></label>';
+  h += '<label class="field"><span>出生年份（大概也行，用来区分哥哥弟弟、堂哥堂弟）</span><input id="f-yr" inputmode="numeric" maxlength="4" placeholder="例如 1968" autocomplete="off"></label>';
+  h += '<label class="field"><span>备注（住哪里、做什么，方便别人认人）</span><input id="f-note" maxlength="60" autocomplete="off"></label>';
+  h += '<p class="preview" id="f-preview"></p><p class="err" id="f-err" hidden></p>';
+  h += '<div class="m-actions"><button class="btn ghost" data-act="modal-close">取消</button><button class="btn primary" data-act="add-confirm">添加</button></div>';
+  openModal(h); updatePreview();
+}
+function readAddForm(){
+  var yr = parseInt(document.getElementById('f-yr').value, 10);
+  return { anchor: document.getElementById('f-anchor').value, rel: document.getElementById('f-rel').value,
+    info: { name: document.getElementById('f-name').value.trim(), yr: (yr > 1800 && yr <= NOW + 1) ? yr : null, note: document.getElementById('f-note').value.trim() } };
+}
+function updatePreview(){
+  var el = document.getElementById('f-preview'); if (!el) return;
+  var f = readAddForm(), M2 = clone(M), res = addRel(M2, f.anchor, f.rel, f.info);
+  var err = document.getElementById('f-err');
+  if (res.err){ el.hidden = true; err.hidden = false; err.textContent = res.err; return; }
+  err.hidden = true; el.hidden = false;
+  var r = relation(M2, DATA.root, res.id);
+  el.innerHTML = '添加后，我称呼 TA 为 <b>' + esc(r ? r.term.t : '—') + '</b>' + (r && r.term.amb ? '<br><span class="small">填上出生年份就能确定是哪一个</span>' : '');
+}
+function openEdit(id){
+  var p = M[id], isRoot = id === DATA.root;
+  var h = '<h2>编辑资料</h2>';
+  h += '<label class="field"><span>姓名</span><input id="e-name" maxlength="20" value="' + esc(p.name) + '" autocomplete="off"></label>';
+  if (isRoot) h += '<label class="field"><span>性别（决定你的配偶叫老公还是老婆）</span><select id="e-g"><option value="M"' + (p.g === 'M' ? ' selected' : '') + '>男</option><option value="F"' + (p.g === 'F' ? ' selected' : '') + '>女</option></select></label>';
+  h += '<label class="field"><span>出生年份</span><input id="e-yr" inputmode="numeric" maxlength="4" value="' + (p.yr || '') + '" autocomplete="off"></label>';
+  h += '<label class="field"><span>备注</span><input id="e-note" maxlength="60" value="' + esc(p.note) + '" autocomplete="off"></label>';
+  h += '<p class="err" id="e-err" hidden></p>';
+  h += '<div class="m-actions"><button class="btn ghost" data-act="modal-close">取消</button><button class="btn primary" data-act="edit-confirm" data-id="' + id + '">保存资料</button></div>';
+  openModal(h);
+}
+function openZibei(abs){
+  var cur = (DATA.zibei || {})[String(abs)] || '';
+  var h = '<h2>设置字辈</h2><p class="small">很多家族同一辈人的名字里共用一个字，比如「建国、建华、建军」都是「建」字辈。没有可以留空。</p>';
+  h += '<label class="field"><span>这一辈的字</span><input id="z-val" maxlength="2" value="' + esc(cur) + '" autocomplete="off"></label>';
+  h += '<div class="m-actions"><button class="btn ghost" data-act="modal-close">取消</button><button class="btn primary" data-act="zibei-confirm" data-gen="' + abs + '">确定</button></div>';
+  openModal(h);
+}
+function openSettings(){
+  var h = '<h2>设置与备份</h2>';
+  h += '<label class="field"><span>家谱名称</span><input id="s-title" maxlength="20" value="' + esc(DATA.title || '') + '" autocomplete="off"></label>';
+  h += '<div class="m-actions"><button class="btn primary" data-act="title-confirm">更新名称</button></div><hr class="sep">';
+  h += '<div class="field"><span>备份：复制下面这段数据存好，以后可以原样导入</span><textarea id="s-export" rows="4" readonly>' + esc(JSON.stringify(DATA)) + '</textarea></div>';
+  h += '<div class="m-actions"><button class="btn" data-act="copy-export">复制备份数据</button></div><hr class="sep">';
+  h += '<div class="field"><span>导入：把备份数据粘贴到这里（会替换当前家谱）</span><textarea id="s-import" rows="4"></textarea></div><p class="err" id="s-err" hidden></p>';
+  h += '<div class="m-actions"><button class="btn ghost" data-act="modal-close">关闭</button><button class="btn" data-act="import-confirm">导入</button></div>';
+  openModal(h);
+}
+
+/* ---------- 保存 ---------- */
+function buildDoc(){
+  var style = document.getElementById('page-style').textContent;
+  var code = document.getElementById('app-code').textContent;
+  var json = JSON.stringify(DATA).replace(/</g, '\\u003c');
+  return '<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>' + RESET + '</style></head><body>' +
+    '<title>家族辈分谱</title>\n' + FONTS + '<style id="page-style">' + style + '</style>\n' + HOSTS +
+    '<script type="application/json" id="family-data">' + json + '</' + 'script>\n' + THREE_TAG + '<script id="app-code">' + code + '</' + 'script>\n</body></html>';
+}
+function save(){
+  if (!ART || S.saving) return;
+  S.saving = true; render();
+  try { sessionStorage.setItem('family-saved', '1'); } catch (e) {}
+  ART.publish(buildDoc()).then(function(){ /* 页面会自动重新载入 */ }, function(e){
+    S.saving = false;
+    try { sessionStorage.removeItem('family-saved'); } catch (x) {}
+    var c = e && e.code;
+    if (c === 'conflict') toast('别处刚保存了新版本，正在载入最新内容');
+    else if (['not_writer', 'not_granted', 'not_declared', 'consent_required', 'capability_disabled', 'capability_removed'].indexOf(c) >= 0){ S.mode = 'view'; S.edit = false; toast('这份家谱你只能查看，修改不会保存'); }
+    else if (c === 'rate_limited') toast('保存得太频繁了，请过一会儿再点保存');
+    else if (c === 'too_large') toast('家谱数据太大，保存失败');
+    else toast('保存没成功，请稍后再试一次');
+    render();
+  });
+}
+function saveLocal(){ try { localStorage.setItem(LS_KEY, JSON.stringify(DATA)); } catch (e) {} }
+function loadLocal(){
+  try { var s = localStorage.getItem(LS_KEY); if (s){ var d = JSON.parse(s); if (d && d.people && d.root) DATA = d; } } catch (e) {}
+}
+
+/* ---------- 交互 ---------- */
+var delArmed = false, clearArmed = false;
+document.addEventListener('click', function(ev){
+  var el = ev.target.closest('[data-act]'); if (!el) return;
+  var act = el.getAttribute('data-act');
+  if (act === 'overlay'){ if (ev.target === el) closeModal(); return; }
+  switch (act){
+    case 'sel': S.sel = S.sel === el.dataset.id ? null : el.dataset.id; delArmed = false; render(); break;
+    case 'close': S.sel = null; render(); break;
+    case 'center-here': S.center = S.sel; render(); toast('已切换到 ' + centerLabel() + ' 的角度'); break;
+    case 'center-root': S.center = DATA.root; render(); break;
+    case 'edit-on': S.edit = true; render(); break;
+    case 'edit-off': S.edit = false; render(); if (S.mode === 'publish' && S.dirty) toast('还有修改没保存，记得点「保存到页面」'); break;
+    case 'add': openAdd(S.sel || S.center); break;
+    case 'add-to': openAdd(S.sel); break;
+    case 'modal-close': closeModal(); break;
+    case 'add-confirm': {
+      var f = readAddForm(), res = addRel(M, f.anchor, f.rel, f.info);
+      if (res.err){ var e1 = document.getElementById('f-err'); e1.hidden = false; e1.textContent = res.err; return; }
+      commit(); closeModal(); S.sel = res.id; render(); toast('已添加'); break;
+    }
+    case 'edit-person': openEdit(S.sel); break;
+    case 'edit-confirm': {
+      var p = M[el.dataset.id], yr = parseInt(document.getElementById('e-yr').value, 10);
+      p.name = document.getElementById('e-name').value.trim();
+      p.yr = (yr > 1800 && yr <= NOW + 1) ? yr : null;
+      p.note = document.getElementById('e-note').value.trim();
+      if (p.name) p.ph = false;
+      var gs = document.getElementById('e-g');
+      if (gs && gs.value !== p.g){
+        var sp = p.sp && M[p.sp];
+        if (sp && sp.g === gs.value){ var e2 = document.getElementById('e-err'); e2.hidden = false; e2.textContent = '已登记的配偶和你是同一性别，先删掉配偶再改性别。'; return; }
+        p.g = gs.value;
+        for (var k in M){ var q = M[k]; if (q.fa === p.id && p.g === 'F'){ q.fa = q.mo; q.mo = p.id; } else if (q.mo === p.id && p.g === 'M'){ q.mo = q.fa; q.fa = p.id; } }
+      }
+      commit(); closeModal(); render(); break;
+    }
+    case 'del-ask': {
+      if (!delArmed){ delArmed = true; el.textContent = '再点一次确认删除'; return; }
+      delArmed = false; var id = S.sel; removePerson(M, id, DATA.root); commit(); S.sel = null; render();
+      toast(M[id] ? '已清空资料（TA 连着其他亲人，所以位置保留）' : '已删除'); break;
+    }
+    case 'zibei': openZibei(el.dataset.gen); break;
+    case 'zibei-confirm': {
+      DATA.zibei = DATA.zibei || {};
+      var v = document.getElementById('z-val').value.trim();
+      if (v) DATA.zibei[el.dataset.gen] = v; else delete DATA.zibei[el.dataset.gen];
+      commit(); closeModal(); render(); break;
+    }
+    case 'settings': openSettings(); break;
+    case 'title-confirm': { DATA.title = document.getElementById('s-title').value.trim() || '我的家族辈分谱'; commit(); render(); toast('名称已更新'); break; }
+    case 'copy-export': {
+      var ta = document.getElementById('s-export');
+      var done = function(){ toast('备份数据已复制'); };
+      var fallback = function(){ ta.focus(); ta.select(); toast('已选中，按 Ctrl+C / ⌘C 复制'); };
+      try { navigator.clipboard.writeText(ta.value).then(done, fallback); } catch (e) { fallback(); }
+      break;
+    }
+    case 'import-confirm': {
+      var e3 = document.getElementById('s-err');
+      try {
+        var d = JSON.parse(document.getElementById('s-import').value);
+        if (!d || !Array.isArray(d.people) || !d.root || !d.people.some(function(x){ return x.id === d.root; })) throw 0;
+        DATA = d; S.center = d.root; S.sel = null; reindex(); commit(); closeModal(); render(); toast('已导入');
+      } catch (x) { e3.hidden = false; e3.textContent = '这段数据看不懂，请粘贴完整的备份内容。'; }
+      break;
+    }
+    case 'clear-ask': {
+      if (!clearArmed){ clearArmed = true; el.textContent = '确定清空？再点一次'; return; }
+      clearArmed = false;
+      DATA = { v: 1, sample: false, title: '我的家族辈分谱', root: 'me', zibei: {}, people: [{ id: 'me', name: '', g: 'M', yr: null, note: '', fa: null, mo: null, sp: null }] };
+      S.center = 'me'; S.sel = 'me'; S.edit = true; reindex(); S.dirty = true; if (S.mode === 'local') saveLocal();
+      render(); openEdit('me'); break;
+    }
+    case 'discard': DATA = clone(ORIGINAL); S.dirty = false; S.sel = null; S.center = DATA.root; render(); toast('已恢复到上次保存的样子'); break;
+    case 'save': save(); break;
+    case 'view': S.view = el.dataset.view; try { localStorage.setItem('family-view', S.view); } catch (e) {} render(); break;
+    case 'rot-toggle': G3.toggleRotate(); break;
+    case 'view-reset': G3.resetView(); break;
+    case 'calc':
+      if (!S.calc.length && (el.dataset.c === 'h' || el.dataset.c === 'w')){ S.calcG = el.dataset.c === 'h' ? 'F' : 'M'; syncGenderButtons(); }
+      S.calc.push(el.dataset.c); renderCalcOut(); break;
+    case 'calc-g': S.calcG = el.dataset.g; syncGenderButtons(); renderCalcOut(); break;
+    case 'calc-back': S.calc.pop(); renderCalcOut(); break;
+    case 'calc-clear': S.calc = []; renderCalcOut(); break;
+  }
+});
+document.addEventListener('change', function(ev){
+  if (ev.target.id === 'center-select'){ S.center = ev.target.value; S.sel = null; render(); }
+  if (ev.target.id === 'f-anchor' || ev.target.id === 'f-rel') updatePreview();
+});
+document.addEventListener('input', function(ev){ if (ev.target.id === 'f-yr' || ev.target.id === 'f-name') updatePreview(); });
+document.addEventListener('keydown', function(ev){
+  if (ev.key !== 'Escape') return;
+  if (document.getElementById('modal-host').innerHTML) closeModal();
+  else if (S.sel){ S.sel = null; render(); }
+});
+function themeChanged(){ G3.invalidate(); if (S.view === '3d') render(); }
+try { window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', themeChanged); } catch (e) {}
+try { new MutationObserver(themeChanged).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] }); } catch (e) {}
+window.addEventListener('beforeunload', function(ev){ if (S.mode === 'publish' && S.dirty && !S.saving){ ev.preventDefault(); ev.returnValue = ''; } });
+
+/* ---------- 启动 ---------- */
+try { if (sessionStorage.getItem('family-saved')){ sessionStorage.removeItem('family-saved'); setTimeout(function(){ toast('已保存，所有打开这个页面的人都会看到新版本'); }, 300); } } catch (e) {}
+if (!window.claude || typeof window.claude.use !== 'function'){ S.mode = 'local'; loadLocal(); }
+render();
+if (S.mode !== 'local'){
+  Promise.all([window.claude.use('artifact'), window.claude.use('user')]).then(function(res){
+    var art = res[0], usr = res[1];
+    if (!art) return;
+    var check = usr && usr.canEdit ? usr.canEdit().catch(function(){ return true; }) : Promise.resolve(true);
+    return check.then(function(can){ if (can){ ART = art; S.mode = 'publish'; render(); } });
+  }).catch(function(){});
+}
+
+})();
+</script>
+</body></html>

@@ -6,11 +6,11 @@
 
 ## 怎么用
 
-**在线用（不用下载）**：打开本仓库首页右侧「About」里的网址。
+**在线用（不用下载）**：https://johnhuasheng.github.io/family-tree-cn/
 
 **下载到电脑用（Windows）**：
 
-1. 在本仓库右侧「Releases」下载最新的 `家族辈分谱-v*.zip`，解压到任意位置。
+1. 下载压缩包 **[家族辈分谱-v1.0.zip](https://github.com/johnhuasheng/family-tree-cn/raw/main/download/%E5%AE%B6%E6%97%8F%E8%BE%88%E5%88%86%E8%B0%B1-v1.0.zip)**（也在仓库的 `download/` 文件夹里），解压到任意位置。
    也可以点绿色的「Code」按钮 →「Download ZIP」，下载整个仓库。
 2. 双击 `启动家族辈分谱.bat`，会用 Edge 或 Chrome 打开一个独立窗口。
    也可以直接双击 `家族辈分谱.html`，用任何浏览器打开（Mac、Linux 也可以）。
